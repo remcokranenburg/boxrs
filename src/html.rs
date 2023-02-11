@@ -1,0 +1,169 @@
+use crate::dom;
+
+pub struct Parser {
+    cursor: usize,
+    data: String,
+}
+
+impl Parser {
+    fn next_char(&self) -> char {
+        self.data[self.cursor..].chars().next().unwrap()
+    }
+
+    fn starts_with(&self, s: &str) -> bool {
+        self.data[self.cursor..].starts_with(s)
+    }
+
+    fn eof(&self) -> bool {
+        self.cursor >= self.data.len()
+    }
+
+    fn consume_char(&mut self) -> char {
+        let mut iter = self.data[self.cursor..].char_indices();
+        let (_, current_char) = iter.next().unwrap();
+        let (next_cursor, _) = iter.next().unwrap_or((1, ' '));
+        self.cursor += next_cursor;
+
+        current_char
+    }
+
+    fn consume_while<F>(&mut self, test: F) -> String
+            where F: Fn(char) -> bool {
+        let mut result = String::new();
+        while !self.eof() && test(self.next_char()) {
+            result.push(self.consume_char());
+        }
+        return result;
+    }
+
+    fn consume_whitespace(&mut self) {
+        self.consume_while(char::is_whitespace);
+    }
+
+    fn parse_tag_name(&mut self) -> String {
+        self.consume_while(|c| match c {
+            'a'..='z' | 'A'..='Z' | '0'..='9' => true,
+            _ => false
+        })
+    }
+
+    fn parse_node(&mut self) -> dom::Node {
+        match self.next_char() {
+            '<' => self.parse_element(),
+            _   => self.parse_text()
+        }
+    }
+
+    fn parse_text(&mut self) -> dom::Node {
+        dom::text(self.consume_while(|c| c != '<'))
+    }
+
+    fn parse_element(&mut self) -> dom::Node {
+        assert!(self.consume_char() == '<');
+        let tag_name = self.parse_tag_name();
+        let attrs = self.parse_attributes();
+        assert!(self.consume_char() == '>');
+
+        let children = self.parse_nodes();
+
+        assert!(self.consume_char() == '<');
+        assert!(self.consume_char() == '/');
+        assert!(self.parse_tag_name() == tag_name);
+        assert!(self.consume_char() == '>');
+
+        return dom::elem(tag_name).add_attrs(attrs).add_children(children);
+    }
+
+    fn parse_attr(&mut self) -> (String, String) {
+        let name = self.parse_tag_name();
+        assert!(self.consume_char() == '=');
+        let value = self.parse_attr_value();
+        return (name, value);
+    }
+
+    fn parse_attr_value(&mut self) -> String {
+        let open_quote = self.consume_char();
+        assert!(open_quote == '"' || open_quote == '\'');
+        let value = self.consume_while(|c| c != open_quote);
+        assert!(self.consume_char() == open_quote);
+        return value;
+    }
+
+    fn parse_attributes(&mut self) -> Vec<(String, String)> {
+        let mut attributes = vec![];
+        loop {
+            self.consume_whitespace();
+            if self.next_char() == '>' {
+                break;
+            }
+            let (name, value) = self.parse_attr();
+            attributes.push((name, value));
+        }
+        return attributes;
+    }
+
+    fn parse_nodes(&mut self) -> Vec<dom::Node> {
+        let mut nodes = Vec::new();
+        loop {
+            self.consume_whitespace();
+            if self.eof() || self.starts_with("</") {
+                break;
+            }
+            nodes.push(self.parse_node());
+        }
+        return nodes;
+    }
+
+    pub fn parse_no_root(source: String) -> Vec<dom::Node> {
+        Parser { cursor: 0, data: source }.parse_nodes()
+    }
+
+    pub fn parse(source: String) -> dom::Node {
+        let mut nodes = Parser::parse_no_root(source);
+
+        if nodes.len() == 1 {
+            nodes.swap_remove(0)
+        } else {
+            dom::elem(String::from("html")).add_children(nodes)
+        }
+    }
+}
+
+impl From<String> for dom::Node {
+    fn from(s: String) -> dom::Node {
+        Parser::parse(s)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::dom::{Node, elem, text};
+
+    #[test]
+    fn test_from_string() {
+        let expected = elem(String::from("html"))
+            .add_attr((String::from("lang"), String::from("NL")))
+            .add_children(vec![
+                elem(String::from("head")).add_children(vec![
+                    elem(String::from("title"))
+                        .add_children(vec![text(String::from("Hello, world!"))]),
+                ]),
+                elem(String::from("body")).add_children(vec![
+                    elem(String::from("h1")).add_children(vec![text(String::from("Hi!"))]),
+                    elem(String::from("p")).add_children(vec![text(String::from("Bye!"))]),
+                ]),
+            ]);
+        let actual = "
+            <html lang=\"NL\">
+                <head>
+                    <title>Hello, world!</title>
+                </head>
+                <body>
+                    <h1>Hi!</h1>
+                    <p>Bye!</p>
+                </body>
+            </html>
+        ";
+        assert_eq!(Node::from(String::from(actual)), expected);
+    }
+}
