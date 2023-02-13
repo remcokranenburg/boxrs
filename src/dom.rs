@@ -11,16 +11,30 @@ pub enum Node {
 }
 
 impl Node {
-    pub fn elem(tag: String) -> Self {
+    pub fn elem(tag: &str) -> Self {
         Node::Element {
-            tag: tag,
+            tag: tag.to_owned(),
             attrs: vec![],
             children: vec![],
         }
     }
 
-    pub fn text(t: String) -> Self {
-        Node::Text(t)
+    pub fn text(t: &str) -> Self {
+        Node::Text(t.to_owned())
+    }
+
+    pub fn add_text(mut self, t: &str) -> Self {
+        self.add_child(text(t))
+    }
+
+    pub fn add_child(mut self, c: Self) -> Self {
+        match self {
+            Node::Element { ref mut children, .. } => {
+                children.push(c);
+            }
+            Node::Text(ref _t) => (),
+        }
+        self
     }
 
     pub fn add_children(mut self, c: Vec<Self>) -> Self {
@@ -35,10 +49,10 @@ impl Node {
         self
     }
 
-    pub fn add_attr(mut self, kv: (String, String)) -> Self {
+    pub fn add_attr(mut self, key: &str, value: &str) -> Self {
         match self {
             Node::Element { ref mut attrs, .. } => {
-                attrs.push(kv);
+                attrs.push((key.to_owned(), value.to_owned()));
             },
             Node::Text(ref _t) => (),
         }
@@ -46,17 +60,22 @@ impl Node {
     }
 
     pub fn add_attrs(mut self, kvs: Vec<(String, String)>) -> Self {
-        for kv in kvs {
-            self = self.add_attr(kv);
+        match self {
+            Node::Element { ref mut attrs, .. } => {
+                for kv in kvs {
+                    attrs.push(kv);
+                }
+            },
+            Node::Text(ref _t) => (),
         }
         self
     }
 
-    pub fn inner_html(mut self, html: String) -> Self {
+    pub fn inner_html(mut self, html: &str) -> Self {
         match self {
             Node::Element { ref mut children, .. } => {
                 children.clear();
-                children.append(&mut Parser::parse_no_root(html));
+                children.append(&mut Parser::parse_no_root(html.to_owned()));
             },
             _ => (),
         }
@@ -103,11 +122,11 @@ impl From<&Node> for String {
     }
 }
 
-pub fn elem(tag: String) -> Node {
+pub fn elem(tag: &str) -> Node {
     Node::elem(tag)
 }
 
-pub fn text(t: String) -> Node {
+pub fn text(t: &str) -> Node {
     Node::text(t)
 }
 
@@ -118,18 +137,14 @@ mod tests {
 
     #[test]
     fn test_to_string() {
-        let actual = elem(String::from("html"))
-            .add_attr((String::from("lang"), String::from("NL")))
-            .add_children(vec![
-                elem(String::from("head")).add_children(vec![
-                    elem(String::from("title"))
-                        .add_children(vec![text(String::from("Hello, world!"))]),
-                ]),
-                elem(String::from("body")).add_children(vec![
-                    elem(String::from("h1")).add_children(vec![text(String::from("Hi!"))]),
-                    elem(String::from("p")).add_children(vec![text(String::from("Bye!"))]),
-                ]),
-            ]);
+
+        let actual = elem("html")
+            .add_attr("lang", "NL")
+            .add_child(elem("head").add_child(elem("title").add_text("Hello, world!")))
+            .add_child(elem("body")
+                .add_child(elem("h1").add_text("Hi!"))
+                .add_child(elem("p").add_text("Bye!"))
+            );
         let expected = "\
             <html lang=\"NL\">\
                 <head>\
@@ -146,9 +161,8 @@ mod tests {
 
     #[test]
     fn test_inner_html() {
-        let actual = elem(String::from("html"))
-            .inner_html(String::from("<h1>hello</h1>"));
+        let actual = elem("html").inner_html("<h1>hello</h1>");
         let expected = "<html><h1>hello</h1></html>";
-        assert_eq!(actual, Node::from(String::from(expected)));
+        assert_eq!(actual, Node::from(expected));
     }
 }

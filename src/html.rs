@@ -55,7 +55,7 @@ impl Parser {
     }
 
     fn parse_text(&mut self) -> dom::Node {
-        dom::text(self.consume_while(|c| c != '<'))
+        dom::text(&self.consume_while(|c| c != '<'))
     }
 
     fn parse_element(&mut self) -> dom::Node {
@@ -71,7 +71,7 @@ impl Parser {
         assert!(self.parse_tag_name() == tag_name);
         assert!(self.consume_char() == '>');
 
-        return dom::elem(tag_name).add_attrs(attrs).add_children(children);
+        return dom::elem(&tag_name).add_attrs(attrs).add_children(children);
     }
 
     fn parse_attr(&mut self) -> (String, String) {
@@ -124,7 +124,7 @@ impl Parser {
         if nodes.len() == 1 {
             nodes.swap_remove(0)
         } else {
-            dom::elem(String::from("html")).add_children(nodes)
+            dom::elem("html").add_children(nodes)
         }
     }
 }
@@ -135,24 +135,25 @@ impl From<String> for dom::Node {
     }
 }
 
+impl From<&str> for dom::Node {
+    fn from(s: &str) -> dom::Node {
+        Parser::parse(s.to_owned())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::dom::{Node, elem, text};
 
     #[test]
     fn test_from_string() {
-        let expected = elem(String::from("html"))
-            .add_attr((String::from("lang"), String::from("NL")))
-            .add_children(vec![
-                elem(String::from("head")).add_children(vec![
-                    elem(String::from("title"))
-                        .add_children(vec![text(String::from("Hello, world!"))]),
-                ]),
-                elem(String::from("body")).add_children(vec![
-                    elem(String::from("h1")).add_children(vec![text(String::from("Hi!"))]),
-                    elem(String::from("p")).add_children(vec![text(String::from("Bye!"))]),
-                ]),
-            ]);
+        let expected = elem("html")
+            .add_attr("lang", "NL")
+            .add_child(elem("head").add_child(elem("title").add_text("Hello, world!")))
+            .add_child(elem("body")
+                .add_child(elem("h1").add_text("Hi!"))
+                .add_child(elem("p").add_text("Bye!"))
+            );
         let actual = "
             <html lang=\"NL\">
                 <head>
@@ -164,6 +165,6 @@ mod tests {
                 </body>
             </html>
         ";
-        assert_eq!(Node::from(String::from(actual)), expected);
+        assert_eq!(Node::from(actual), expected);
     }
 }
