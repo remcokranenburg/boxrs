@@ -28,56 +28,41 @@ impl Node {
     }
 
     pub fn add_child(mut self, c: Self) -> Self {
-        match self {
-            Node::Element { ref mut children, .. } => {
-                children.push(c);
-            }
-            Node::Text(ref _t) => (),
+        if let Node::Element { ref mut children, .. } = self {
+            children.push(c);
         }
         self
     }
 
-    pub fn add_children(mut self, c: Vec<Self>) -> Self {
-        match self {
-            Node::Element { ref mut children, .. } => {
-                for item in c {
-                    children.push(item)
-                }
+    pub fn add_children(mut self, cs: Vec<Self>) -> Self {
+        if let Node::Element { ref mut children, .. } = self {
+            for item in cs {
+                children.push(item)
             }
-            Node::Text(ref _t) => (),
         }
         self
     }
 
     pub fn add_attr(mut self, key: &str, value: &str) -> Self {
-        match self {
-            Node::Element { ref mut attrs, .. } => {
-                attrs.push((key.to_owned(), value.to_owned()));
-            },
-            Node::Text(ref _t) => (),
+        if let Node::Element { ref mut attrs, .. } = self {
+            attrs.push((key.to_owned(), value.to_owned()));
         }
         self
     }
 
     pub fn add_attrs(mut self, kvs: Vec<(String, String)>) -> Self {
-        match self {
-            Node::Element { ref mut attrs, .. } => {
-                for kv in kvs {
-                    attrs.push(kv);
-                }
-            },
-            Node::Text(ref _t) => (),
+        if let Node::Element { ref mut attrs, .. } = self {
+            for item in kvs {
+                attrs.push(item)
+            }
         }
         self
     }
 
     pub fn inner_html(mut self, html: &str) -> Self {
-        match self {
-            Node::Element { ref mut children, .. } => {
-                children.clear();
-                children.append(&mut Parser::parse_no_root(html.to_owned()));
-            },
-            _ => (),
+        if let Node::Element { ref mut children, .. } = self {
+            children.clear();
+            children.append(&mut Parser::parse_no_root(html.to_owned()));
         }
         self
     }
@@ -137,13 +122,16 @@ mod tests {
 
     #[test]
     fn test_to_string() {
-
         let actual = elem("html")
             .add_attr("lang", "NL")
-            .add_child(elem("head").add_child(elem("title").add_text("Hello, world!")))
-            .add_child(elem("body")
-                .add_child(elem("h1").add_text("Hi!"))
-                .add_child(elem("p").add_text("Bye!"))
+            .add_child(
+                elem("head")
+                    .add_child(elem("title").add_text("Hello, world!"))
+            )
+            .add_child(
+                elem("body")
+                    .add_child(elem("h1").add_text("Hi!"))
+                    .add_child(elem("p").add_text("Bye!"))
             );
         let expected = "\
             <html lang=\"NL\">\
