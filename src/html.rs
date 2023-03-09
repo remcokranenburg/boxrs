@@ -143,7 +143,7 @@ impl From<&str> for dom::Node {
 
 #[cfg(test)]
 mod tests {
-    use crate::dom::{Node, elem, text};
+    use crate::dom::{Node, elem};
 
     #[test]
     fn test_from_string() {

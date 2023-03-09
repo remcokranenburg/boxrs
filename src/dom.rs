@@ -117,8 +117,7 @@ pub fn text(t: &str) -> Node {
 
 #[cfg(test)]
 mod tests {
-    use crate::dom::{Node, elem, text};
-    use crate::html::Parser;
+    use crate::dom::{Node, elem};
 
     #[test]
     fn test_to_string() {
