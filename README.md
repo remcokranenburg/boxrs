@@ -1,3 +1,5 @@
+[![coverage](https://remcokranenburg.github.io/boxrs/coverage/badges/for_the_badge.svg)](https://remcokranenburg.github.io/boxrs/coverage/)
+
 Welcome to boxrs, my attempt to create a Rust-only GUI library, in the style of a browser engine.
 
 The idea is this:
