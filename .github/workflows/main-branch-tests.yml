@@ -1,9 +1,7 @@
-name: Run cargo test
+name: Main branch tests
 
 on:
   push:
-    branches: [ "main" ]
-  pull_request:
     branches: [ "main" ]
 
 env:
@@ -23,13 +21,26 @@ jobs:
   build-coverage:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - name: Check out main branch
+        uses: actions/checkout@v3
+        with:
+          path: main
       - name: Run coverage.sh
-        run: ./coverage.sh
+        run: |
+          cd main
+          ./coverage.sh
       - name: Archive code coverage results
         uses: actions/upload-artifact@v3
         with:
           name: code-coverage-report
-          path: target/debug/coverage/
+          path: main/target/debug/coverage/
+      - name: Check out artifacts branch
+        uses: actions/checkout@v3
+        with:
+          ref: artifacts
+          path: artifacts
+          token: ${{ secrets.ARTIFACTS_PAT }}
       - name: Publish code coverage results
-        run: .github/publish-coverage.sh
+        run: |
+          cd artifacts
+          ../main/.github/publish-coverage.sh
