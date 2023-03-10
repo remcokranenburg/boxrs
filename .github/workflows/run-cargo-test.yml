@@ -30,4 +30,6 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: code-coverage-report
-          path: ./target/debug/coverage/
+          path: target/debug/coverage/
+      - name: Publish code coverage results
+        run: .github/publish-coverage.sh
