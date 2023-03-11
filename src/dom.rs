@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use crate::html::Parser;
 
 #[derive(Debug)]
@@ -23,7 +25,7 @@ impl Node {
         Node::Text(t.to_owned())
     }
 
-    pub fn add_text(mut self, t: &str) -> Self {
+    pub fn add_text(self, t: &str) -> Self {
         self.add_child(text(t))
     }
 
@@ -66,6 +68,49 @@ impl Node {
         }
         self
     }
+
+    pub fn get_id(&self) -> Option<&str> {
+        if let Node::Element { ref attrs, .. } = self {
+            for attr in attrs {
+                if attr.0 == "id" {
+                    return Some(&attr.1)
+                }
+            }
+        }
+
+        None
+    }
+
+    pub fn get_classes(&self) -> HashSet<&str> {
+        if let Node::Element { ref attrs, .. } = self {
+            for attr in attrs {
+                if attr.0 == "class" {
+                    return attr.1.split(' ').collect()
+                }
+            }
+        }
+
+        HashSet::new()
+    }
+
+    pub fn get_elements_by_tag_name(&self, tag_name: &str) -> Vec<&Self> {
+        match self {
+            Node::Element { ref tag, ref children, .. } => {
+                let mut result = vec![];
+
+                if tag == tag_name {
+                    result.push(self);
+                }
+
+                for child in children {
+                    result.append(&mut child.get_elements_by_tag_name(tag_name));
+                }
+
+                result
+            }
+            Node::Text(_) => vec![],
+        }
+    }
 }
 
 impl PartialEq for Node {
@@ -94,11 +139,9 @@ impl From<&Node> for String {
     fn from(n: &Node) -> String {
         match n {
             Node::Element { tag, attrs, children } => {
-                let attrs_str = attrs
-                    .iter()
+                let attrs_str = attrs.iter()
                     .fold("".to_owned(), |acc, x| format!("{} {}=\"{}\"", acc, x.0, x.1));
-                let children_str = children
-                    .iter()
+                let children_str = children.iter()
                     .fold("".to_owned(), |acc, x| format!("{}{}", acc, String::from(x)));
                 format!("<{}{}>{}</{}>", &tag, attrs_str, children_str, &tag)
             }
@@ -151,5 +194,19 @@ mod tests {
         let actual = elem("html").inner_html("<h1>hello</h1>");
         let expected = "<html><h1>hello</h1></html>";
         assert_eq!(actual, Node::from(expected));
+    }
+
+    #[test]
+    fn test_get_id() {
+        let doc = elem("html").add_attr("id", "foo");
+        assert_eq!(doc.get_id().unwrap(), "foo");
+    }
+
+    #[test]
+    fn test_get_classes() {
+        let doc = elem("html").add_attr("class", "foo bar");
+        let classes = doc.get_classes();
+        assert!(classes.contains("foo"));
+        assert!(classes.contains("bar"));
     }
 }

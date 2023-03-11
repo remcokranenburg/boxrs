@@ -1,4 +1,4 @@
-pub struct Sheet(Vec<Rule>);
+pub struct Sheet(pub Vec<Rule>);
 
 impl Sheet {
     pub fn add_rule(mut self, rule: Rule) -> Self {
@@ -15,8 +15,8 @@ impl From<&Sheet> for String {
 }
 
 pub struct Rule {
-    selectors: Vec<Selector>,
-    declarations: Vec<Declaration>,
+    pub selectors: Vec<Selector>,
+    pub declarations: Vec<Declaration>,
 }
 
 impl Rule {
@@ -47,11 +47,13 @@ impl From<&Rule> for String {
     }
 }
 
+pub type Specificity = (usize, usize, usize);
+
 pub struct Selector {
-    _tag: Option<String>,
-    _class: Option<String>,
-    _id: Option<String>,
-    _attr: Option<(String, AttrOp, String)>,
+    pub _tag: Option<String>, // sorry for the horrible public underscores :'(
+    pub _class: Option<String>,
+    pub _id: Option<String>,
+    pub _attr: Option<(String, AttrOp, String)>,
 }
 
 impl Selector {
@@ -74,8 +76,14 @@ impl Selector {
         self._attr = Some((attr_name.to_owned(), attr_op, attr_value.to_owned()));
         self
     }
-}
 
+    pub fn get_specificity(&self) -> Specificity {
+        let a = self._id.iter().count();
+        let b = self._class.iter().count() + self._attr.iter().count();
+        let c = self._tag.iter().count();
+        (a, b, c)
+    }
+}
 
 impl From<&Selector> for String {
     fn from(selector: &Selector) -> String {
@@ -121,9 +129,9 @@ impl From<&AttrOp> for String {
     }
 }
 
-struct Declaration {
-    name: String,
-    value: Value,
+pub struct Declaration {
+    pub name: String,
+    pub value: Value,
 }
 
 impl From<&Declaration> for String {
@@ -132,6 +140,7 @@ impl From<&Declaration> for String {
     }
 }
 
+#[derive(Clone, Debug, PartialEq)]
 pub enum Value {
     Keyword(String),
     Length(f32, Unit),
@@ -148,6 +157,7 @@ impl From<&Value> for String {
     }
 }
 
+#[derive(Clone, Debug, PartialEq)]
 pub enum Unit {
     Px,
 }
