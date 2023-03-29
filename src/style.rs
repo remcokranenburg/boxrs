@@ -29,7 +29,10 @@ impl<'a> From<&'a StyledNode<'a>> for String {
 
                 output.push_str(" style=\"");
 
-                for (key, value) in &styled_node.specified_values {
+                let mut specified_values: Vec<_> = styled_node.specified_values.iter().collect();
+                specified_values.sort_by(|&(a, _), &(b, _)| a.cmp(&b));
+
+                for (key, value) in specified_values {
                     output.push_str(&format!("{}:{};", key, String::from(value)));
                 }
                 output.push('"');
@@ -127,7 +130,7 @@ fn match_rule<'a>(node: &Node, rule: &'a Rule) -> Option<MatchedRule<'a>> {
 
 fn matches(node: &Node, selector: &Selector) -> bool {
     match node {
-        Node::Element { tag, attrs, children } => {
+        Node::Element { tag, attrs: _, children: _ } => {
             if selector._tag.iter().any(|name| *tag != *name) {
                 return false
             }
@@ -188,5 +191,26 @@ mod tests {
 
         // element class bar does not match selector class foo
         assert_eq!(actual.children[1].specified_values, HashMap::new());
+    }
+
+    #[test]
+    fn test_to_str() {
+        let document = elem("html").inner_html(r#"
+            <body class="bar">
+                <h1>Hi!</h1>
+                <p>Bye!</p>
+            </body>"#
+        );
+
+        let style = sheet()
+            .add_rule(rule()
+                .add_selector(selector().tag("body").class("foo"))
+                .add_selector(selector().tag("p"))
+                .add_declaration("margin", Value::Keyword("auto".to_owned()))
+                .add_declaration("width", Value::Length(24.0, Unit::Px)));
+
+        let actual = style_tree(&document, &style);
+        let expected = r#"<html style=""><body class="bar" style=""><h1 style="">Hi!</h1><p style="margin:auto;width:24px;">Bye!</p></body></html>"#;
+        assert_eq!(String::from(&actual), expected);
     }
 }
