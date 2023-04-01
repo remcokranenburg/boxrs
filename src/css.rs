@@ -410,4 +410,30 @@ mod tests {
         let expected = r#"body[class="foo"],p{margin:auto;width:24px}"#;
         assert_eq!(String::from(&actual), expected);
     }
+
+    #[test]
+    fn test_from_str() {
+        let css = Sheet::from("
+            a, b {
+                display: block;
+                background-color: #ff0000;
+                margin: 24px;
+                width: 100px;
+            }
+
+            c {
+                display: inline;
+                background-color: blue;
+                margin: 24px;
+                width: 32px;
+                height: 24px;
+            }
+        ");
+
+        assert_eq!(css.0[0].selectors[0]._tag, Some("a".to_owned()));
+        assert_eq!(css.0[0].selectors[1]._tag, Some("b".to_owned()));
+        assert_eq!(css.0[0].declarations[0].name, "display".to_owned());
+
+        assert_eq!(css.0[1].selectors[0]._tag, Some("c".to_owned()));
+    }
 }

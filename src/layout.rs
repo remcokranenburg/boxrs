@@ -303,40 +303,96 @@ fn sum<I>(iter: I) -> f32 where I: Iterator<Item=f32> {
 
 #[cfg(test)]
 mod tests {
+    use pretty_assertions::assert_eq;
+
     use crate::dom::*;
     use crate::css::*;
     use crate::style::*;
     use crate::layout::*;
 
     #[test]
-    fn test_layout_box() {
-        let document = elem("a").inner_html("
-            <b>
-                <c>Hello</c>
-                <c>world!</c>
-            </b>
-            <b>
-                <c>Bye</c>
-                <c>all!</c>
-            </b>");
+    fn test_layout() {
+        let document = Node::from(r#"
+            <html>
+                <body class="bar">
+                    <h1>Hi!</h1>
+                    <p>Bye!</p>
+                </body>
+            </html>
+        "#);
 
-        let red = Color { r: 255, g: 0, b: 0, a: 0 };
+        let style = Sheet::from(r#"
+            html, body, h1, p {
+                display: block;
+            }
 
-        let style = sheet()
-            .add_rule(rule()
-                .add_selector(selector().tag("a"))
-                .add_selector(selector().tag("b"))
-                .add_declaration("display", Value::Keyword("block".to_owned()))
-                .add_declaration("background-color", Value::ColorValue(red))
-                .add_declaration("margin", Value::Length(24.0, Unit::Px))
-                .add_declaration("width", Value::Length(100.0, Unit::Px)))
-            .add_rule(rule()
-                .add_selector(selector().tag("c"))
-                .add_declaration("display", Value::Keyword("inline".to_owned()))
-                .add_declaration("background-color", Value::Keyword("blue".to_owned()))
-                .add_declaration("margin", Value::Length(24.0, Unit::Px))
-                .add_declaration("width", Value::Length(32.0, Unit::Px))
-                .add_declaration("height", Value::Length(24.0, Unit::Px)));
+            html {
+                height: 600px;
+            }
+
+            body.foo, p {
+                margin: auto;
+                width: 24px;
+            }
+        "#);
+
+        let style = style_tree(&document, &style);
+
+        let mut viewport: Dimensions = Default::default();
+        viewport.content.width  = 800.0;
+        viewport.content.height = 600.0;
+
+        let actual = layout_tree(&style, viewport.clone());
+
+        let body = &actual.children[0];
+        let h1 = &body.children[0];
+        let p = &body.children[1];
+
+        assert_eq!(actual.dimensions, viewport.clone());
+        assert_eq!(body.dimensions.content.width, 800.0);
+        assert_eq!(h1.dimensions.content.width, 800.0);
+        assert_eq!(p.dimensions.content.width, 24.0);
+    }
+
+    #[test]
+    fn test_layout_inline() {
+        let document = Node::from("
+            <a>
+                <b>
+                    <c>Hello</c>
+                    <c>world!</c>
+                </b>
+                <b>
+                    <c>Bye</c>
+                    <c>all!</c>
+                </b>
+            </a>
+        ");
+
+        let style = Sheet::from("
+            a, b {
+                display: block;
+            }
+
+            a {
+                height: 600px;
+            }
+
+            b {
+                background-color: #ff0000;
+                margin: 24px;
+                width: 100px;
+                height: 100px;
+            }
+
+            c {
+                display: inline;
+                background-color: blue;
+                margin: 24px;
+                width: 32px;
+                height: 24px;
+            }
+        ");
 
         let applied_styles = style_tree(&document, &style);
 
@@ -348,34 +404,36 @@ mod tests {
 
         assert_eq!(actual.dimensions, viewport);
 
-        if let BoxType::InlineNode(_) = actual.box_type {} else {
+        let b0 = &actual.children[0];
+        let c0 = &b0.children[0].children[0]; // TODO: unnecessary anonymous box
+        let c1 = &b0.children[0].children[1];
+
+        assert_eq!(actual.dimensions, viewport.clone());
+        assert_eq!(b0.dimensions, Dimensions {
+            content: Rect { x: 24.0, y: 24.0, width: 100.0, height: 100.0 },
+            padding: EdgeSizes { left: 0.0, right: 0.0, top: 0.0, bottom: 0.0 },
+            border: EdgeSizes { left: 0.0, right: 0.0, top: 0.0, bottom: 0.0 },
+            margin: EdgeSizes { left: 24.0, right: 676.0, top: 24.0, bottom: 24.0 },
+
+        });
+
+        // TODO: inline positioning not implemented yet
+
+        // assert_eq!(c0.dimensions, Dimensions {
+        //     content: Rect { x: 24.0, y: 24.0, width: 32.0, height: 32.0 },
+        //     padding: EdgeSizes { left: 0.0, right: 0.0, top: 0.0, bottom: 0.0 },
+        //     border: EdgeSizes { left: 0.0, right: 0.0, top: 0.0, bottom: 0.0 },
+        //     margin: EdgeSizes { left: 24.0, right: 676.0, top: 24.0, bottom: 24.0 },
+
+        // });
+        // assert_eq!(c1.dimensions.content.width, 32.0);
+
+        if let BoxType::InlineNode(_) = c0.box_type {} else {
             panic!();
         }
-    }
 
-    #[test]
-    fn test_to_str() {
-        // TODO add layout_tree
-
-        let document = elem("html").inner_html(r#"
-            <body class="bar">
-                <h1>Hi!</h1>
-                <p>Bye!</p>
-            </body>"#
-        );
-
-        let style = sheet()
-            .add_rule(rule()
-                .add_selector(selector().tag("body").class("foo"))
-                .add_selector(selector().tag("p"))
-                .add_declaration("margin", Value::Keyword("auto".to_owned()))
-                .add_declaration("width", Value::Length(24.0, Unit::Px)));
-
-
-        let style = style_tree(&document, &style);
-        let layout = layout_tree(&applied_styles, viewport.clone());
-
-        let expected = r#"<html style=""><body class="bar" style=""><h1 style="">Hi!</h1><p style="margin:auto;width:24px;">Bye!</p></body></html>"#;
-        assert_eq!(String::from(&actual), expected);
+        if let BoxType::InlineNode(_) = c1.box_type {} else {
+            panic!();
+        }
     }
 }
