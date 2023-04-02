@@ -3,8 +3,9 @@ extern crate image;
 
 use std::default::Default;
 use std::env;
-use std::io::{Read, BufWriter};
+use std::io::Read;
 use std::fs::File;
+
 use boxrs::css::Color;
 
 fn main() {
@@ -30,9 +31,7 @@ fn main() {
     let layout_root = boxrs::build_layout_tree(&style_root, viewport);
     let display_list = boxrs::build_display_list(&layout_root);
 
-    // Create the output file:
     let filename = "output.png";
-    let mut file = BufWriter::new(File::create(&filename).unwrap());
 
     // Rasterize:
     let background = Color { r: 255, g: 255, b: 255, a: 255 };
@@ -59,9 +58,10 @@ fn main() {
 
     let img = image::ImageBuffer::from_fn(width as u32, height as u32, move |x, y| {
         let color = &canvas[(y * width as u32 + x) as usize];
-        image::Pixel::from_channels(color.r, color.g, color.b, color.a)
+        image::Rgba([color.r, color.g, color.b, color.a])
     });
-    let result = image::ImageRgba8(img).save(&mut file, image::PNG);
+
+    let result = img.save(filename);
 
     match result {
         Ok(_) => println!("Saved output as {}", filename),
