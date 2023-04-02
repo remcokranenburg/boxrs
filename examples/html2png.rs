@@ -5,6 +5,7 @@ use std::default::Default;
 use std::env;
 use std::io::{Read, BufWriter};
 use std::fs::File;
+
 use boxrs::css::Color;
 
 fn main() {
@@ -61,7 +62,7 @@ fn main() {
         let color = &canvas[(y * width as u32 + x) as usize];
         image::Pixel::from_channels(color.r, color.g, color.b, color.a)
     });
-    let result = image::ImageRgba8(img).save(&mut file, image::PNG);
+    let result = image::DynamicImage::ImageRgba8(img).save(&mut file, image::PNG);
 
     match result {
         Ok(_) => println!("Saved output as {}", filename),
