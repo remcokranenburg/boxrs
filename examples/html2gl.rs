@@ -43,10 +43,8 @@ fn draw_color_rectangle(target: &mut Frame, square_buffer: &VertexBuffer<Vertex>
 fn main() {
     let mut args = env::args().skip(1);
     let html_filename = args.next().expect("HTML file provided as first argument");
-    let css_filename = args.next().expect("CSS file provided as second argument");
 
     let html = read_source(&html_filename);
-    let css = read_source(&css_filename);
 
     // Since we don't have an actual window, hard-code the "viewport" size.
     let width = 800;
@@ -58,10 +56,6 @@ fn main() {
 
     // Parsing and rendering:
     let root_node = boxrs::parse_html(&html);
-    let stylesheet = boxrs::parse_css(&css);
-    let style_root = boxrs::build_style_tree(&root_node, &stylesheet);
-    let layout_root = boxrs::build_layout_tree(&style_root, viewport);
-    let display_list = boxrs::build_display_list(&layout_root);
 
     // Extract title:
     let mut title = "html2gl".to_owned();
@@ -72,7 +66,7 @@ fn main() {
     //   None => "html2gl",
     // }
 
-    if let Node::Element { children, .. } = root_node {
+    if let Node::Element { ref children, .. } = root_node {
         'outer: for c in children {
             if let Node::Element { tag, children, .. } = c {
                 if tag == "head" {
@@ -81,7 +75,7 @@ fn main() {
                             if tag == "title" {
                                 for c in children {
                                     if let Node::Text(t) = c {
-                                        title = t;
+                                        title = t.clone();
                                         break 'outer;
                                     }
                                 }
@@ -92,6 +86,39 @@ fn main() {
             }
         }
     }
+
+    let mut css_filename = None;
+
+    if let Node::Element { ref children, .. } = root_node {
+        'outer: for c in children {
+            if let Node::Element { tag, children, .. } = c {
+                if tag == "head" {
+                    for c in children {
+                        if let Node::Element { tag, attrs, .. } = c {
+                            if tag == "link" && attrs.contains(&("rel".to_owned(), "stylesheet".to_owned())) {
+                                for attr in attrs {
+                                    if attr.0 == "href" {
+                                        css_filename = Some(attr.1.clone());
+                                        break 'outer;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    println!("Opening CSS file {}", css_filename.as_ref().unwrap());
+
+    let css = read_source(&css_filename.unwrap());
+
+    // Combine HTML with CSS to create list of draw commands
+    let stylesheet = boxrs::parse_css(&css);
+    let style_root = boxrs::build_style_tree(&root_node, &stylesheet);
+    let layout_root = boxrs::build_layout_tree(&style_root, viewport);
+    let display_list = boxrs::build_display_list(&layout_root);
 
     // Render with OpenGL:
     let mut event_loop = glutin::event_loop::EventLoop::new();
@@ -183,13 +210,4 @@ fn read_source(filename: &str) -> String {
     let mut s = String::new();
     File::open(filename).unwrap().read_to_string(&mut s).unwrap();
     s
-}
-
-trait Clamp {
-    fn clamp(self, lower: Self, upper: Self) -> Self;
-}
-impl Clamp for f32 {
-    fn clamp(self, lower: f32, upper: f32) -> f32 {
-        self.max(lower).min(upper)
-    }
 }
