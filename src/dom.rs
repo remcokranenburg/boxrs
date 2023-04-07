@@ -93,6 +93,19 @@ impl Node {
         HashSet::new()
     }
 
+    pub fn get_text_content(&self) -> String {
+        match self {
+            Node::Element { ref children, .. } => {
+                let mut content = "".to_owned();
+                for c in children {
+                    content.push_str(&c.get_text_content());
+                }
+                content
+            },
+            Node::Text(t) => t.to_owned(),
+        }
+    }
+
     pub fn get_elements_by_tag_name(&self, tag_name: &str) -> Vec<&Self> {
         match self {
             Node::Element { ref tag, ref children, .. } => {

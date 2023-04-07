@@ -58,56 +58,32 @@ fn main() {
     let root_node = boxrs::parse_html(&html);
 
     // Extract title:
-    let mut title = "html2gl".to_owned();
+    let title = match root_node.get_elements_by_tag_name("title").iter().next() {
+        Some(node) => node.get_text_content(),
+        None => "html2gl".to_owned(),
+    };
 
     // TODO: replace with:
-    // let title = match root_node.select("html > head > title") {
-    //   Some(node) => node.get_text_content(),
-    //   None => "html2gl",
+    // let css_filename = match root_node.select("html > head > link[rel=stylesheet][href]") {
+    //   Some(node) => Some(node.get_attribute("href")),
+    //   None => None,
     // }
 
-    if let Node::Element { ref children, .. } = root_node {
-        'outer: for c in children {
-            if let Node::Element { tag, children, .. } = c {
-                if tag == "head" {
-                    for c in children {
-                        if let Node::Element { tag, children, .. } = c {
-                            if tag == "title" {
-                                for c in children {
-                                    if let Node::Text(t) = c {
-                                        title = t.clone();
-                                        break 'outer;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
+    // TODO: of course, really replace this with something that keeps track of all sheets
 
     let mut css_filename = None;
 
-    if let Node::Element { ref children, .. } = root_node {
-        'outer: for c in children {
-            if let Node::Element { tag, children, .. } = c {
-                if tag == "head" {
-                    for c in children {
-                        if let Node::Element { tag, attrs, .. } = c {
-                            if tag == "link" && attrs.contains(&("rel".to_owned(), "stylesheet".to_owned())) {
-                                for attr in attrs {
-                                    if attr.0 == "href" {
-                                        css_filename = Some(attr.1.clone());
-                                        break 'outer;
-                                    }
-                                }
-                            }
-                        }
+    match root_node.get_elements_by_tag_name("link").iter().next() {
+        Some(Node::Element { attrs, .. }) => {
+            if attrs.contains(&("rel".to_owned(), "stylesheet".to_owned())) {
+                for attr in attrs {
+                    if attr.0 == "href" {
+                        css_filename = Some(attr.1.clone());
                     }
                 }
             }
-        }
+        },
+        _ => (),
     }
 
     println!("Opening CSS file {}", css_filename.as_ref().unwrap());
