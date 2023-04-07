@@ -126,7 +126,7 @@ fn main() {
         void main() {
             gl_Position = vec4(
                 (x + position.x * width) / 800.0 * 2.0 - 1.0,
-                (y + position.y * height) / 600.0 * 2.0 - 1.0,
+                (y + position.y * height) / 600.0 * -2.0 + 1.0,
                 layer,
                 1.0
             );
