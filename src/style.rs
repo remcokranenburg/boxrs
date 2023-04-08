@@ -131,16 +131,16 @@ fn match_rule<'a>(node: &Node, rule: &'a Rule) -> Option<MatchedRule<'a>> {
 fn matches(node: &Node, selector: &Selector) -> bool {
     match node {
         Node::Element { tag, attrs: _, children: _ } => {
-            if selector._tag.iter().any(|name| *tag != *name) {
+            if selector.tag.iter().any(|name| *tag != *name) {
                 return false
             }
 
-            if selector._id.iter().any(|id| node.get_id().unwrap_or("") != id) {
+            if selector.id.iter().any(|id| node.get_id().unwrap_or("") != id) {
                 return false;
             }
 
             let node_classes = node.get_classes();
-            if selector._class.iter().any(|class| !node_classes.contains(&**class)) {
+            if selector.class.iter().any(|class| !node_classes.contains(&**class)) {
                 return false;
             }
 
@@ -174,8 +174,8 @@ mod tests {
 
         let style = sheet()
             .add_rule(rule()
-                .add_selector(selector().tag("body").class("foo"))
-                .add_selector(selector().tag("p"))
+                .add_selector(selector().add_tag("body").add_class("foo"))
+                .add_selector(selector().add_tag("p"))
                 .add_declaration("margin", Value::Keyword("auto".to_owned()))
                 .add_declaration("width", Value::Length(24.0, Unit::Px)));
 
@@ -204,8 +204,8 @@ mod tests {
 
         let style = sheet()
             .add_rule(rule()
-                .add_selector(selector().tag("body").class("foo"))
-                .add_selector(selector().tag("p"))
+                .add_selector(selector().add_tag("body").add_class("foo"))
+                .add_selector(selector().add_tag("p"))
                 .add_declaration("margin", Value::Keyword("auto".to_owned()))
                 .add_declaration("width", Value::Length(24.0, Unit::Px)));
 

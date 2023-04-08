@@ -50,37 +50,37 @@ impl From<&Rule> for String {
 pub type Specificity = (usize, usize, usize);
 
 pub struct Selector {
-    pub _tag: Option<String>, // sorry for the horrible public underscores :'(
-    pub _class: Option<String>,
-    pub _id: Option<String>,
-    pub _attr: Option<(String, AttrOp, String)>,
+    pub tag: Option<String>,
+    pub class: Option<String>,
+    pub id: Option<String>,
+    pub attr: Option<(String, AttrOp, String)>,
 }
 
 impl Selector {
-    pub fn tag(mut self, tag_name: &str) -> Self {
-        self._tag = Some(tag_name.to_owned());
+    pub fn add_tag(mut self, tag_name: &str) -> Self {
+        self.tag = Some(tag_name.to_owned());
         self
     }
 
-    pub fn class(mut self, class_name: &str) -> Self {
-        self._class = Some(class_name.to_owned());
+    pub fn add_class(mut self, class_name: &str) -> Self {
+        self.class = Some(class_name.to_owned());
         self
     }
 
-    pub fn id(mut self, id_name: &str) -> Self {
-        self._id = Some(id_name.to_owned());
+    pub fn add_id(mut self, id_name: &str) -> Self {
+        self.id = Some(id_name.to_owned());
         self
     }
 
-    pub fn attr(mut self, attr_name: &str, attr_op: AttrOp, attr_value: &str) -> Self {
-        self._attr = Some((attr_name.to_owned(), attr_op, attr_value.to_owned()));
+    pub fn add_attr(mut self, attr_name: &str, attr_op: AttrOp, attr_value: &str) -> Self {
+        self.attr = Some((attr_name.to_owned(), attr_op, attr_value.to_owned()));
         self
     }
 
     pub fn get_specificity(&self) -> Specificity {
-        let a = self._id.iter().count();
-        let b = self._class.iter().count() + self._attr.iter().count();
-        let c = self._tag.iter().count();
+        let a = self.id.iter().count();
+        let b = self.class.iter().count() + self.attr.iter().count();
+        let c = self.tag.iter().count();
         (a, b, c)
     }
 }
@@ -89,21 +89,21 @@ impl From<&Selector> for String {
     fn from(selector: &Selector) -> String {
         let mut selector_str = String::new();
 
-        if let Some(ref tag_name) = selector._tag {
+        if let Some(ref tag_name) = selector.tag {
             selector_str.push_str(&tag_name);
         }
 
-        if let Some(ref class_name) = selector._class {
+        if let Some(ref class_name) = selector.class {
             selector_str.push('.');
             selector_str.push_str(&class_name);
         }
 
-        if let Some(ref id_name) = selector._id {
+        if let Some(ref id_name) = selector.id {
             selector_str.push('#');
             selector_str.push_str(&id_name);
         }
 
-        if let Some((ref attr_name, ref attr_op, ref attr_value)) = selector._attr {
+        if let Some((ref attr_name, ref attr_op, ref attr_value)) = selector.attr {
             selector_str.push('[');
             selector_str.push_str(&attr_name);
             selector_str.push_str(&String::from(attr_op));
@@ -196,7 +196,7 @@ pub fn rule() -> Rule {
 }
 
 pub fn selector() -> Selector {
-    Selector{ _tag: None, _class: None, _id: None, _attr: None }
+    Selector{ tag: None, class: None, id: None, attr: None }
 }
 
 impl From<&str> for Sheet {
@@ -249,16 +249,16 @@ impl Parser {
     }
 
     fn parse_simple_selector(&mut self) -> Selector {
-        let mut selector = Selector { _tag: None, _id: None, _class: None, _attr: None };
+        let mut selector = Selector { tag: None, id: None, class: None, attr: None };
         while !self.eof() {
             match self.next_char() {
                 '#' => {
                     self.consume_char();
-                    selector._id = Some(self.parse_identifier());
+                    selector.id = Some(self.parse_identifier());
                 }
                 '.' => {
                     self.consume_char();
-                    selector._class = Some(self.parse_identifier());
+                    selector.class = Some(self.parse_identifier());
                 }
                 // '[' => {
                 //     self.consume_char();
@@ -267,14 +267,14 @@ impl Parser {
                 //     let op = self.consume_char();
                 //     self.consume_whitespace();
                 //     let value = self.parse_attribute_value();
-                //     selector._attr = Some((attr, op, value));
+                //     selector.attr = Some((attr, op, value));
                 // }
                 '*' => {
                     // universal selector
                     self.consume_char();
                 }
                 c if valid_identifier_char(c) => {
-                    selector._tag = Some(self.parse_identifier());
+                    selector.tag = Some(self.parse_identifier());
                 }
                 _ => break
             }
@@ -403,8 +403,8 @@ mod tests {
     fn test_to_string() {
         let actual = sheet()
             .add_rule(rule()
-                .add_selector(selector().tag("body").attr("class", AttrOp::Eq, "foo"))
-                .add_selector(selector().tag("p"))
+                .add_selector(selector().add_tag("body").add_attr("class", AttrOp::Eq, "foo"))
+                .add_selector(selector().add_tag("p"))
                 .add_declaration("margin", Value::Keyword("auto".to_owned()))
                 .add_declaration("width", Value::Length(24.0, Unit::Px)));
         let expected = r#"body[class="foo"],p{margin:auto;width:24px}"#;
@@ -430,10 +430,10 @@ mod tests {
             }
         ");
 
-        assert_eq!(css.0[0].selectors[0]._tag, Some("a".to_owned()));
-        assert_eq!(css.0[0].selectors[1]._tag, Some("b".to_owned()));
+        assert_eq!(css.0[0].selectors[0].tag, Some("a".to_owned()));
+        assert_eq!(css.0[0].selectors[1].tag, Some("b".to_owned()));
         assert_eq!(css.0[0].declarations[0].name, "display".to_owned());
 
-        assert_eq!(css.0[1].selectors[0]._tag, Some("c".to_owned()));
+        assert_eq!(css.0[1].selectors[0].tag, Some("c".to_owned()));
     }
 }
