@@ -97,7 +97,7 @@ fn main() {
     let display_list = boxrs::build_display_list(&layout_root);
 
     // Render with OpenGL:
-    let mut event_loop = glutin::event_loop::EventLoop::new();
+    let event_loop = glutin::event_loop::EventLoop::new();
     let wb = glutin::window::WindowBuilder::new()
         .with_title(format!("{title} - html2gl"));
     let cb = glutin::ContextBuilder::new()
