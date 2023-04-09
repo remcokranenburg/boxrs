@@ -883,7 +883,7 @@
             </div>
             <div class="column has-background-white p-0"
                  role="cell">
-                <pre class="has-background-white py-0 px-2">    pub _tag: Option&lt;String&gt;, &#x2F;&#x2F; sorry for the horrible public underscores :&#x27;(</pre>
+                <pre class="has-background-white py-0 px-2">    pub tag: Option&lt;String&gt;,</pre>
             </div>
         </div><div class="columns p-0 m-0" role="row">
             <div
@@ -899,7 +899,7 @@
             </div>
             <div class="column has-background-white p-0"
                  role="cell">
-                <pre class="has-background-white py-0 px-2">    pub _class: Option&lt;String&gt;,</pre>
+                <pre class="has-background-white py-0 px-2">    pub class: Option&lt;String&gt;,</pre>
             </div>
         </div><div class="columns p-0 m-0" role="row">
             <div
@@ -915,7 +915,7 @@
             </div>
             <div class="column has-background-white p-0"
                  role="cell">
-                <pre class="has-background-white py-0 px-2">    pub _id: Option&lt;String&gt;,</pre>
+                <pre class="has-background-white py-0 px-2">    pub id: Option&lt;String&gt;,</pre>
             </div>
         </div><div class="columns p-0 m-0" role="row">
             <div
@@ -931,7 +931,7 @@
             </div>
             <div class="column has-background-white p-0"
                  role="cell">
-                <pre class="has-background-white py-0 px-2">    pub _attr: Option&lt;(String, AttrOp, String)&gt;,</pre>
+                <pre class="has-background-white py-0 px-2">    pub attr: Option&lt;(String, AttrOp, String)&gt;,</pre>
             </div>
         </div><div class="columns p-0 m-0" role="row">
             <div
@@ -995,7 +995,7 @@
             </div>
             <div class="column has-background-success-light p-0"
                  role="cell">
-                <pre class="has-background-success-light py-0 px-2">    pub fn tag(mut self, tag_name: &amp;str) -&gt; Self {</pre>
+                <pre class="has-background-success-light py-0 px-2">    pub fn add_tag(mut self, tag_name: &amp;str) -&gt; Self {</pre>
             </div>
         </div><div class="columns p-0 m-0" role="row">
             <div
@@ -1011,7 +1011,7 @@
             </div>
             <div class="column has-background-success-light p-0"
                  role="cell">
-                <pre class="has-background-success-light py-0 px-2">        self._tag = Some(tag_name.to_owned());</pre>
+                <pre class="has-background-success-light py-0 px-2">        self.tag = Some(tag_name.to_owned());</pre>
             </div>
         </div><div class="columns p-0 m-0" role="row">
             <div
@@ -1075,7 +1075,7 @@
             </div>
             <div class="column has-background-success-light p-0"
                  role="cell">
-                <pre class="has-background-success-light py-0 px-2">    pub fn class(mut self, class_name: &amp;str) -&gt; Self {</pre>
+                <pre class="has-background-success-light py-0 px-2">    pub fn add_class(mut self, class_name: &amp;str) -&gt; Self {</pre>
             </div>
         </div><div class="columns p-0 m-0" role="row">
             <div
@@ -1091,7 +1091,7 @@
             </div>
             <div class="column has-background-success-light p-0"
                  role="cell">
-                <pre class="has-background-success-light py-0 px-2">        self._class = Some(class_name.to_owned());</pre>
+                <pre class="has-background-success-light py-0 px-2">        self.class = Some(class_name.to_owned());</pre>
             </div>
         </div><div class="columns p-0 m-0" role="row">
             <div
@@ -1155,7 +1155,7 @@
             </div>
             <div class="column has-background-danger-light p-0"
                  role="cell">
-                <pre class="has-background-danger-light py-0 px-2">    pub fn id(mut self, id_name: &amp;str) -&gt; Self {</pre>
+                <pre class="has-background-danger-light py-0 px-2">    pub fn add_id(mut self, id_name: &amp;str) -&gt; Self {</pre>
             </div>
         </div><div class="columns p-0 m-0" role="row">
             <div
@@ -1171,7 +1171,7 @@
             </div>
             <div class="column has-background-danger-light p-0"
                  role="cell">
-                <pre class="has-background-danger-light py-0 px-2">        self._id = Some(id_name.to_owned());</pre>
+                <pre class="has-background-danger-light py-0 px-2">        self.id = Some(id_name.to_owned());</pre>
             </div>
         </div><div class="columns p-0 m-0" role="row">
             <div
@@ -1235,7 +1235,7 @@
             </div>
             <div class="column has-background-success-light p-0"
                  role="cell">
-                <pre class="has-background-success-light py-0 px-2">    pub fn attr(mut self, attr_name: &amp;str, attr_op: AttrOp, attr_value: &amp;str) -&gt; Self {</pre>
+                <pre class="has-background-success-light py-0 px-2">    pub fn add_attr(mut self, attr_name: &amp;str, attr_op: AttrOp, attr_value: &amp;str) -&gt; Self {</pre>
             </div>
         </div><div class="columns p-0 m-0" role="row">
             <div
@@ -1251,7 +1251,7 @@
             </div>
             <div class="column has-background-success-light p-0"
                  role="cell">
-                <pre class="has-background-success-light py-0 px-2">        self._attr = Some((attr_name.to_owned(), attr_op, attr_value.to_owned()));</pre>
+                <pre class="has-background-success-light py-0 px-2">        self.attr = Some((attr_name.to_owned(), attr_op, attr_value.to_owned()));</pre>
             </div>
         </div><div class="columns p-0 m-0" role="row">
             <div
@@ -1331,7 +1331,7 @@
             </div>
             <div class="column has-background-success-light p-0"
                  role="cell">
-                <pre class="has-background-success-light py-0 px-2">        let a = self._id.iter().count();</pre>
+                <pre class="has-background-success-light py-0 px-2">        let a = self.id.iter().count();</pre>
             </div>
         </div><div class="columns p-0 m-0" role="row">
             <div
@@ -1347,7 +1347,7 @@
             </div>
             <div class="column has-background-success-light p-0"
                  role="cell">
-                <pre class="has-background-success-light py-0 px-2">        let b = self._class.iter().count() + self._attr.iter().count();</pre>
+                <pre class="has-background-success-light py-0 px-2">        let b = self.class.iter().count() + self.attr.iter().count();</pre>
             </div>
         </div><div class="columns p-0 m-0" role="row">
             <div
@@ -1363,7 +1363,7 @@
             </div>
             <div class="column has-background-success-light p-0"
                  role="cell">
-                <pre class="has-background-success-light py-0 px-2">        let c = self._tag.iter().count();</pre>
+                <pre class="has-background-success-light py-0 px-2">        let c = self.tag.iter().count();</pre>
             </div>
         </div><div class="columns p-0 m-0" role="row">
             <div
@@ -1507,7 +1507,7 @@
             </div>
             <div class="column has-background-success-light p-0"
                  role="cell">
-                <pre class="has-background-success-light py-0 px-2">        if let Some(ref tag_name) = selector._tag {</pre>
+                <pre class="has-background-success-light py-0 px-2">        if let Some(ref tag_name) = selector.tag {</pre>
             </div>
         </div><div class="columns p-0 m-0" role="row">
             <div
@@ -1571,7 +1571,7 @@
             </div>
             <div class="column has-background-success-light p-0"
                  role="cell">
-                <pre class="has-background-success-light py-0 px-2">        if let Some(ref class_name) = selector._class {</pre>
+                <pre class="has-background-success-light py-0 px-2">        if let Some(ref class_name) = selector.class {</pre>
             </div>
         </div><div class="columns p-0 m-0" role="row">
             <div
@@ -1651,7 +1651,7 @@
             </div>
             <div class="column has-background-success-light p-0"
                  role="cell">
-                <pre class="has-background-success-light py-0 px-2">        if let Some(ref id_name) = selector._id {</pre>
+                <pre class="has-background-success-light py-0 px-2">        if let Some(ref id_name) = selector.id {</pre>
             </div>
         </div><div class="columns p-0 m-0" role="row">
             <div
@@ -1731,7 +1731,7 @@
             </div>
             <div class="column has-background-success-light p-0"
                  role="cell">
-                <pre class="has-background-success-light py-0 px-2">        if let Some((ref attr_name, ref attr_op, ref attr_value)) = selector._attr {</pre>
+                <pre class="has-background-success-light py-0 px-2">        if let Some((ref attr_name, ref attr_op, ref attr_value)) = selector.attr {</pre>
             </div>
         </div><div class="columns p-0 m-0" role="row">
             <div
@@ -3219,7 +3219,7 @@
             </div>
             <div class="column has-background-success-light p-0"
                  role="cell">
-                <pre class="has-background-success-light py-0 px-2">    Selector{ _tag: None, _class: None, _id: None, _attr: None }</pre>
+                <pre class="has-background-success-light py-0 px-2">    Selector{ tag: None, class: None, id: None, attr: None }</pre>
             </div>
         </div><div class="columns p-0 m-0" role="row">
             <div
@@ -4067,7 +4067,7 @@
             </div>
             <div class="column has-background-success-light p-0"
                  role="cell">
-                <pre class="has-background-success-light py-0 px-2">        let mut selector = Selector { _tag: None, _id: None, _class: None, _attr: None };</pre>
+                <pre class="has-background-success-light py-0 px-2">        let mut selector = Selector { tag: None, id: None, class: None, attr: None };</pre>
             </div>
         </div><div class="columns p-0 m-0" role="row">
             <div
@@ -4147,7 +4147,7 @@
             </div>
             <div class="column has-background-danger-light p-0"
                  role="cell">
-                <pre class="has-background-danger-light py-0 px-2">                    selector._id = Some(self.parse_identifier());</pre>
+                <pre class="has-background-danger-light py-0 px-2">                    selector.id = Some(self.parse_identifier());</pre>
             </div>
         </div><div class="columns p-0 m-0" role="row">
             <div
@@ -4211,7 +4211,7 @@
             </div>
             <div class="column has-background-success-light p-0"
                  role="cell">
-                <pre class="has-background-success-light py-0 px-2">                    selector._class = Some(self.parse_identifier());</pre>
+                <pre class="has-background-success-light py-0 px-2">                    selector.class = Some(self.parse_identifier());</pre>
             </div>
         </div><div class="columns p-0 m-0" role="row">
             <div
@@ -4355,7 +4355,7 @@
             </div>
             <div class="column has-background-white p-0"
                  role="cell">
-                <pre class="has-background-white py-0 px-2">                &#x2F;&#x2F;     selector._attr = Some((attr, op, value));</pre>
+                <pre class="has-background-white py-0 px-2">                &#x2F;&#x2F;     selector.attr = Some((attr, op, value));</pre>
             </div>
         </div><div class="columns p-0 m-0" role="row">
             <div
@@ -4467,7 +4467,7 @@
             </div>
             <div class="column has-background-success-light p-0"
                  role="cell">
-                <pre class="has-background-success-light py-0 px-2">                    selector._tag = Some(self.parse_identifier());</pre>
+                <pre class="has-background-success-light py-0 px-2">                    selector.tag = Some(self.parse_identifier());</pre>
             </div>
         </div><div class="columns p-0 m-0" role="row">
             <div
@@ -6531,7 +6531,7 @@
             </div>
             <div class="column has-background-success-light p-0"
                  role="cell">
-                <pre class="has-background-success-light py-0 px-2">                .add_selector(selector().tag(&quot;body&quot;).attr(&quot;class&quot;, AttrOp::Eq, &quot;foo&quot;))</pre>
+                <pre class="has-background-success-light py-0 px-2">                .add_selector(selector().add_tag(&quot;body&quot;).add_attr(&quot;class&quot;, AttrOp::Eq, &quot;foo&quot;))</pre>
             </div>
         </div><div class="columns p-0 m-0" role="row">
             <div
@@ -6547,7 +6547,7 @@
             </div>
             <div class="column has-background-success-light p-0"
                  role="cell">
-                <pre class="has-background-success-light py-0 px-2">                .add_selector(selector().tag(&quot;p&quot;))</pre>
+                <pre class="has-background-success-light py-0 px-2">                .add_selector(selector().add_tag(&quot;p&quot;))</pre>
             </div>
         </div><div class="columns p-0 m-0" role="row">
             <div
@@ -6963,7 +6963,7 @@
             </div>
             <div class="column has-background-success-light p-0"
                  role="cell">
-                <pre class="has-background-success-light py-0 px-2">        assert_eq!(css.0[0].selectors[0]._tag, Some(&quot;a&quot;.to_owned()));</pre>
+                <pre class="has-background-success-light py-0 px-2">        assert_eq!(css.0[0].selectors[0].tag, Some(&quot;a&quot;.to_owned()));</pre>
             </div>
         </div><div class="columns p-0 m-0" role="row">
             <div
@@ -6979,7 +6979,7 @@
             </div>
             <div class="column has-background-success-light p-0"
                  role="cell">
-                <pre class="has-background-success-light py-0 px-2">        assert_eq!(css.0[0].selectors[1]._tag, Some(&quot;b&quot;.to_owned()));</pre>
+                <pre class="has-background-success-light py-0 px-2">        assert_eq!(css.0[0].selectors[1].tag, Some(&quot;b&quot;.to_owned()));</pre>
             </div>
         </div><div class="columns p-0 m-0" role="row">
             <div
@@ -7027,7 +7027,7 @@
             </div>
             <div class="column has-background-success-light p-0"
                  role="cell">
-                <pre class="has-background-success-light py-0 px-2">        assert_eq!(css.0[1].selectors[0]._tag, Some(&quot;c&quot;.to_owned()));</pre>
+                <pre class="has-background-success-light py-0 px-2">        assert_eq!(css.0[1].selectors[0].tag, Some(&quot;c&quot;.to_owned()));</pre>
             </div>
         </div><div class="columns p-0 m-0" role="row">
             <div
@@ -7065,7 +7065,7 @@
 </div>
         <footer class="footer">
             <div class="content has-text-centered">
-                <p class="heading">Date: 2023-04-06 22:40</p>
+                <p class="heading">Date: 2023-04-09 11:55</p>
             </div>
         </footer>
     </body>
