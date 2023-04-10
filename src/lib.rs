@@ -17,7 +17,10 @@ pub fn build_style_tree<'a>(h: &'a dom::Node, c: &'a css::Sheet) -> style::Style
     style::style_tree(h, c)
 }
 
-pub fn build_layout_tree<'a>(s: &'a style::StyledNode, d: layout::Dimensions) -> layout::LayoutBox<'a> {
+pub fn build_layout_tree<'a>(
+    s: &'a style::StyledNode,
+    d: layout::Dimensions,
+) -> layout::LayoutBox<'a> {
     layout::layout_tree(s, d)
 }
 
