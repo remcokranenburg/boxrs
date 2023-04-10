@@ -4,8 +4,8 @@ extern crate glium;
 
 use std::default::Default;
 use std::env;
-use std::io::Read;
 use std::fs::File;
+use std::io::Read;
 
 use boxrs::css::Color;
 use boxrs::dom::Node;
@@ -22,9 +22,14 @@ struct Vertex {
 
 implement_vertex!(Vertex, position);
 
-fn draw_color_rectangle(target: &mut Frame, square_buffer: &VertexBuffer<Vertex>, program: &Program,
-        color: &Color, rect: &Rect, layer: f32) {
-
+fn draw_color_rectangle(
+    target: &mut Frame,
+    square_buffer: &VertexBuffer<Vertex>,
+    program: &Program,
+    color: &Color,
+    rect: &Rect,
+    layer: f32,
+) {
     let indices = NoIndices(PrimitiveType::TriangleStrip);
 
     let uniforms = uniform! {
@@ -36,8 +41,15 @@ fn draw_color_rectangle(target: &mut Frame, square_buffer: &VertexBuffer<Vertex>
         in_color: [color.r as f32, color.g as f32, color.b as f32, color.a as f32]
     };
 
-    target.draw(square_buffer, &indices, program, &uniforms,
-            &Default::default()).unwrap();
+    target
+        .draw(
+            square_buffer,
+            &indices,
+            program,
+            &uniforms,
+            &Default::default(),
+        )
+        .unwrap();
 }
 
 fn main() {
@@ -51,7 +63,7 @@ fn main() {
     let height = 600;
 
     let mut viewport: boxrs::layout::Dimensions = Default::default();
-    viewport.content.width  = width as f32;
+    viewport.content.width = width as f32;
     viewport.content.height = height as f32;
 
     // Parsing and rendering:
@@ -82,7 +94,7 @@ fn main() {
                     }
                 }
             }
-        },
+        }
         _ => (),
     }
 
@@ -98,17 +110,23 @@ fn main() {
 
     // Render with OpenGL:
     let event_loop = glutin::event_loop::EventLoop::new();
-    let wb = glutin::window::WindowBuilder::new()
-        .with_title(format!("{title} - html2gl"));
-    let cb = glutin::ContextBuilder::new()
-        .with_depth_buffer(24);
+    let wb = glutin::window::WindowBuilder::new().with_title(format!("{title} - html2gl"));
+    let cb = glutin::ContextBuilder::new().with_depth_buffer(24);
     let display = Display::new(wb, cb, &event_loop).unwrap();
 
     let square_shape = vec![
-        Vertex { position: [0.0, 0.0] },
-        Vertex { position: [1.0, 0.0] },
-        Vertex { position: [0.0, 1.0] },
-        Vertex { position: [1.0, 1.0] },
+        Vertex {
+            position: [0.0, 0.0],
+        },
+        Vertex {
+            position: [1.0, 0.0],
+        },
+        Vertex {
+            position: [0.0, 1.0],
+        },
+        Vertex {
+            position: [1.0, 1.0],
+        },
     ];
     let square_buffer = VertexBuffer::new(&display, &square_shape).unwrap();
 
@@ -145,8 +163,8 @@ fn main() {
         }
     "#;
 
-    let program = Program::from_source(&display, vertex_shader_src, fragment_shader_src, None)
-            .unwrap();
+    let program =
+        Program::from_source(&display, vertex_shader_src, fragment_shader_src, None).unwrap();
 
     event_loop.run(move |ev, _, control_flow| {
         let mut target = display.draw();
@@ -166,15 +184,15 @@ fn main() {
 
         target.finish().unwrap();
 
-        let next_frame_time = std::time::Instant::now() +
-            std::time::Duration::from_nanos(16_666_667);
+        let next_frame_time =
+            std::time::Instant::now() + std::time::Duration::from_nanos(16_666_667);
         *control_flow = glutin::event_loop::ControlFlow::WaitUntil(next_frame_time);
         match ev {
             glutin::event::Event::WindowEvent { event, .. } => match event {
                 glutin::event::WindowEvent::CloseRequested => {
                     *control_flow = glutin::event_loop::ControlFlow::Exit;
                     return;
-                },
+                }
                 _ => return,
             },
             _ => (),
@@ -184,6 +202,9 @@ fn main() {
 
 fn read_source(filename: &str) -> String {
     let mut s = String::new();
-    File::open(filename).unwrap().read_to_string(&mut s).unwrap();
+    File::open(filename)
+        .unwrap()
+        .read_to_string(&mut s)
+        .unwrap();
     s
 }
