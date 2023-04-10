@@ -30,14 +30,20 @@ impl Node {
     }
 
     pub fn add_child(mut self, c: Self) -> Self {
-        if let Node::Element { ref mut children, .. } = self {
+        if let Node::Element {
+            ref mut children, ..
+        } = self
+        {
             children.push(c);
         }
         self
     }
 
     pub fn add_children(mut self, cs: Vec<Self>) -> Self {
-        if let Node::Element { ref mut children, .. } = self {
+        if let Node::Element {
+            ref mut children, ..
+        } = self
+        {
             for item in cs {
                 children.push(item)
             }
@@ -62,7 +68,10 @@ impl Node {
     }
 
     pub fn inner_html(mut self, html: &str) -> Self {
-        if let Node::Element { ref mut children, .. } = self {
+        if let Node::Element {
+            ref mut children, ..
+        } = self
+        {
             children.clear();
             children.append(&mut Parser::parse_no_root(html.to_owned()));
         }
@@ -73,7 +82,7 @@ impl Node {
         if let Node::Element { ref attrs, .. } = self {
             for attr in attrs {
                 if attr.0 == "id" {
-                    return Some(&attr.1)
+                    return Some(&attr.1);
                 }
             }
         }
@@ -85,7 +94,7 @@ impl Node {
         if let Node::Element { ref attrs, .. } = self {
             for attr in attrs {
                 if attr.0 == "class" {
-                    return attr.1.split(' ').collect()
+                    return attr.1.split(' ').collect();
                 }
             }
         }
@@ -101,14 +110,18 @@ impl Node {
                     content.push_str(&c.get_text_content());
                 }
                 content
-            },
+            }
             Node::Text(t) => t.to_owned(),
         }
     }
 
     pub fn get_elements_by_tag_name(&self, tag_name: &str) -> Vec<&Self> {
         match self {
-            Node::Element { ref tag, ref children, .. } => {
+            Node::Element {
+                ref tag,
+                ref children,
+                ..
+            } => {
                 let mut result = vec![];
 
                 if tag == tag_name {
@@ -129,13 +142,17 @@ impl Node {
 impl PartialEq for Node {
     fn eq(&self, other: &Self) -> bool {
         match self {
-            Node::Element { tag, attrs, children } => {
-                match other {
-                    Node::Element { tag: other_tag, attrs: other_attrs, children: other_children } => {
-                        tag == other_tag && attrs == other_attrs && children == other_children
-                    },
-                    _ => false,
-                }
+            Node::Element {
+                tag,
+                attrs,
+                children,
+            } => match other {
+                Node::Element {
+                    tag: other_tag,
+                    attrs: other_attrs,
+                    children: other_children,
+                } => tag == other_tag && attrs == other_attrs && children == other_children,
+                _ => false,
             },
             Node::Text(t) => {
                 if let Node::Text(other_t) = other {
@@ -151,14 +168,20 @@ impl PartialEq for Node {
 impl From<&Node> for String {
     fn from(n: &Node) -> String {
         match n {
-            Node::Element { tag, attrs, children } => {
-                let attrs_str = attrs.iter()
-                    .fold("".to_owned(), |acc, x| format!("{} {}=\"{}\"", acc, x.0, x.1));
-                let children_str = children.iter()
-                    .fold("".to_owned(), |acc, x| format!("{}{}", acc, String::from(x)));
+            Node::Element {
+                tag,
+                attrs,
+                children,
+            } => {
+                let attrs_str = attrs.iter().fold("".to_owned(), |acc, x| {
+                    format!("{} {}=\"{}\"", acc, x.0, x.1)
+                });
+                let children_str = children.iter().fold("".to_owned(), |acc, x| {
+                    format!("{}{}", acc, String::from(x))
+                });
                 format!("<{}{}>{}</{}>", &tag, attrs_str, children_str, &tag)
             }
-            Node::Text(t) => String::from(t)
+            Node::Text(t) => String::from(t),
         }
     }
 }
@@ -173,20 +196,17 @@ pub fn text(t: &str) -> Node {
 
 #[cfg(test)]
 mod tests {
-    use crate::dom::{Node, elem};
+    use crate::dom::{elem, Node};
 
     #[test]
     fn test_to_string() {
         let actual = elem("html")
             .add_attr("lang", "NL")
-            .add_child(
-                elem("head")
-                    .add_child(elem("title").add_text("Hello, world!"))
-            )
+            .add_child(elem("head").add_child(elem("title").add_text("Hello, world!")))
             .add_child(
                 elem("body")
                     .add_child(elem("h1").add_text("Hi!"))
-                    .add_child(elem("p").add_text("Bye!"))
+                    .add_child(elem("p").add_text("Bye!")),
             );
         let expected = "\
             <html lang=\"NL\">\
