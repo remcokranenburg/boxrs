@@ -28,7 +28,9 @@ impl Parser {
     }
 
     fn consume_while<F>(&mut self, test: F) -> String
-            where F: Fn(char) -> bool {
+    where
+        F: Fn(char) -> bool,
+    {
         let mut result = String::new();
         while !self.eof() && test(self.next_char()) {
             result.push(self.consume_char());
@@ -43,14 +45,14 @@ impl Parser {
     fn parse_tag_name(&mut self) -> String {
         self.consume_while(|c| match c {
             'a'..='z' | 'A'..='Z' | '0'..='9' => true,
-            _ => false
+            _ => false,
         })
     }
 
     fn parse_node(&mut self) -> dom::Node {
         match self.next_char() {
             '<' => self.parse_element(),
-            _   => self.parse_text()
+            _ => self.parse_text(),
         }
     }
 
@@ -115,7 +117,11 @@ impl Parser {
     }
 
     pub fn parse_no_root(source: String) -> Vec<dom::Node> {
-        Parser { cursor: 0, data: source }.parse_nodes()
+        Parser {
+            cursor: 0,
+            data: source,
+        }
+        .parse_nodes()
     }
 
     pub fn parse(source: String) -> dom::Node {
@@ -143,16 +149,17 @@ impl From<&str> for dom::Node {
 
 #[cfg(test)]
 mod tests {
-    use crate::dom::{Node, elem};
+    use crate::dom::{elem, Node};
 
     #[test]
     fn test_from_string() {
         let expected = elem("html")
             .add_attr("lang", "NL")
             .add_child(elem("head").add_child(elem("title").add_text("Hello, world!")))
-            .add_child(elem("body")
-                .add_child(elem("h1").add_text("Hi!"))
-                .add_child(elem("p").add_text("Bye!"))
+            .add_child(
+                elem("body")
+                    .add_child(elem("h1").add_text("Hi!"))
+                    .add_child(elem("p").add_text("Bye!")),
             );
         let actual = "
             <html lang=\"NL\">
