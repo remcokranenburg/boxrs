@@ -1,3 +1,5 @@
+use std::cmp::Reverse;
+
 pub struct Sheet(pub Vec<Rule>);
 
 impl Sheet {
@@ -30,7 +32,7 @@ impl Rule {
     pub fn add_declaration(mut self, name: &str, value: Value) -> Self {
         self.declarations.push(Declaration {
             name: name.to_owned(),
-            value: value,
+            value,
         });
         self
     }
@@ -41,14 +43,14 @@ impl From<&Rule> for String {
         let selectors_str = rule
             .selectors
             .iter()
-            .map(|selector| String::from(selector))
+            .map(String::from)
             .collect::<Vec<_>>()
             .join(",");
 
         let declarations_str = rule
             .declarations
             .iter()
-            .map(|declaration| String::from(declaration))
+            .map(String::from)
             .collect::<Vec<_>>()
             .join(";");
 
@@ -99,25 +101,25 @@ impl From<&Selector> for String {
         let mut selector_str = String::new();
 
         if let Some(ref tag_name) = selector.tag {
-            selector_str.push_str(&tag_name);
+            selector_str.push_str(tag_name);
         }
 
         if let Some(ref class_name) = selector.class {
             selector_str.push('.');
-            selector_str.push_str(&class_name);
+            selector_str.push_str(class_name);
         }
 
         if let Some(ref id_name) = selector.id {
             selector_str.push('#');
-            selector_str.push_str(&id_name);
+            selector_str.push_str(id_name);
         }
 
         if let Some((ref attr_name, ref attr_op, ref attr_value)) = selector.attr {
             selector_str.push('[');
-            selector_str.push_str(&attr_name);
+            selector_str.push_str(attr_name);
             selector_str.push_str(&String::from(attr_op));
             selector_str.push('"');
-            selector_str.push_str(&attr_value);
+            selector_str.push_str(attr_value);
             selector_str.push('"');
             selector_str.push(']');
         }
@@ -269,7 +271,7 @@ impl Parser {
             }
         }
         // Return selectors with highest specificity first, for use in matching.
-        selectors.sort_by(|a, b| b.get_specificity().cmp(&a.get_specificity()));
+        selectors.sort_by_key(|s| Reverse(s.get_specificity()));
         selectors
     }
 
@@ -327,7 +329,7 @@ impl Parser {
     }
 
     fn parse_declaration(&mut self) -> Declaration {
-        let property_name = self.parse_identifier();
+        let name = self.parse_identifier();
         self.consume_whitespace();
         assert_eq!(self.consume_char(), ':');
         self.consume_whitespace();
@@ -335,10 +337,7 @@ impl Parser {
         self.consume_whitespace();
         assert_eq!(self.consume_char(), ';');
 
-        Declaration {
-            name: property_name,
-            value: value,
-        }
+        Declaration { name, value }
     }
 
     fn parse_value(&mut self) -> Value {
@@ -354,10 +353,7 @@ impl Parser {
     }
 
     fn parse_float(&mut self) -> f32 {
-        let s = self.consume_while(|c| match c {
-            '0'..='9' | '.' => true,
-            _ => false,
-        });
+        let s = self.consume_while(|c| matches!(c, '0'..='9' | '.'));
         s.parse().unwrap()
     }
 
@@ -396,7 +392,7 @@ impl Parser {
         while !self.eof() && test(self.next_char()) {
             result.push(self.consume_char());
         }
-        return result;
+        result
     }
 
     fn consume_whitespace(&mut self) {

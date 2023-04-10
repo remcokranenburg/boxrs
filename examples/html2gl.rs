@@ -44,7 +44,7 @@ fn draw_color_rectangle(
     target
         .draw(
             square_buffer,
-            &indices,
+            indices,
             program,
             &uniforms,
             &Default::default(),
@@ -70,7 +70,7 @@ fn main() {
     let root_node = boxrs::parse_html(&html);
 
     // Extract title:
-    let title = match root_node.get_elements_by_tag_name("title").iter().next() {
+    let title = match root_node.get_elements_by_tag_name("title").first() {
         Some(node) => node.get_text_content(),
         None => "html2gl".to_owned(),
     };
@@ -85,17 +85,14 @@ fn main() {
 
     let mut css_filename = None;
 
-    match root_node.get_elements_by_tag_name("link").iter().next() {
-        Some(Node::Element { attrs, .. }) => {
-            if attrs.contains(&("rel".to_owned(), "stylesheet".to_owned())) {
-                for attr in attrs {
-                    if attr.0 == "href" {
-                        css_filename = Some(attr.1.clone());
-                    }
+    if let Some(Node::Element { attrs, .. }) = root_node.get_elements_by_tag_name("link").first() {
+        if attrs.contains(&("rel".to_owned(), "stylesheet".to_owned())) {
+            for attr in attrs {
+                if attr.0 == "href" {
+                    css_filename = Some(attr.1.clone());
                 }
             }
         }
-        _ => (),
     }
 
     println!("Opening CSS file {}", css_filename.as_ref().unwrap());
@@ -187,15 +184,11 @@ fn main() {
         let next_frame_time =
             std::time::Instant::now() + std::time::Duration::from_nanos(16_666_667);
         *control_flow = glutin::event_loop::ControlFlow::WaitUntil(next_frame_time);
-        match ev {
-            glutin::event::Event::WindowEvent { event, .. } => match event {
-                glutin::event::WindowEvent::CloseRequested => {
-                    *control_flow = glutin::event_loop::ControlFlow::Exit;
-                    return;
-                }
-                _ => return,
-            },
-            _ => (),
+
+        if let glutin::event::Event::WindowEvent { event, .. } = ev {
+            if event == glutin::event::WindowEvent::CloseRequested {
+                *control_flow = glutin::event_loop::ControlFlow::Exit;
+            }
         }
     });
 }

@@ -46,7 +46,7 @@ pub enum BoxType<'a> {
 impl<'a> LayoutBox<'a> {
     fn new(box_type: BoxType) -> LayoutBox {
         LayoutBox {
-            box_type: box_type,
+            box_type,
             dimensions: Default::default(),
             children: Vec::new(),
         }
@@ -270,7 +270,7 @@ impl<'a> LayoutBox<'a> {
         for child in &mut self.children {
             child.layout(*d);
             // Increment the height so each child is laid out below the previous one.
-            d.content.height = d.content.height + child.dimensions.margin_box().height;
+            d.content.height += child.dimensions.margin_box().height;
         }
     }
 
@@ -381,13 +381,13 @@ mod tests {
         viewport.content.width = 800.0;
         viewport.content.height = 600.0;
 
-        let actual = layout_tree(&style, viewport.clone());
+        let actual = layout_tree(&style, viewport);
 
         let body = &actual.children[0];
         let h1 = &body.children[0];
         let p = &body.children[1];
 
-        assert_eq!(actual.dimensions, viewport.clone());
+        assert_eq!(actual.dimensions, viewport);
         assert_eq!(body.dimensions.content.width, 800.0);
         assert_eq!(h1.dimensions.content.width, 800.0);
         assert_eq!(p.dimensions.content.width, 24.0);
@@ -443,7 +443,7 @@ mod tests {
         viewport.content.width = 800.0;
         viewport.content.height = 600.0;
 
-        let actual = layout_tree(&applied_styles, viewport.clone());
+        let actual = layout_tree(&applied_styles, viewport);
 
         assert_eq!(actual.dimensions, viewport);
 
@@ -451,7 +451,7 @@ mod tests {
         let c0 = &b0.children[0].children[0]; // TODO: unnecessary anonymous box
         let c1 = &b0.children[0].children[1];
 
-        assert_eq!(actual.dimensions, viewport.clone());
+        assert_eq!(actual.dimensions, viewport);
         assert_eq!(
             b0.dimensions,
             Dimensions {

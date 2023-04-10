@@ -35,7 +35,7 @@ impl Parser {
         while !self.eof() && test(self.next_char()) {
             result.push(self.consume_char());
         }
-        return result;
+        result
     }
 
     fn consume_whitespace(&mut self) {
@@ -43,10 +43,7 @@ impl Parser {
     }
 
     fn parse_tag_name(&mut self) -> String {
-        self.consume_while(|c| match c {
-            'a'..='z' | 'A'..='Z' | '0'..='9' => true,
-            _ => false,
-        })
+        self.consume_while(|c| matches!(c, 'a'..='z' | 'A'..='Z' | '0'..='9'))
     }
 
     fn parse_node(&mut self) -> dom::Node {
@@ -73,14 +70,14 @@ impl Parser {
         assert!(self.parse_tag_name() == tag_name);
         assert!(self.consume_char() == '>');
 
-        return dom::elem(&tag_name).add_attrs(attrs).add_children(children);
+        dom::elem(&tag_name).add_attrs(attrs).add_children(children)
     }
 
     fn parse_attr(&mut self) -> (String, String) {
         let name = self.parse_tag_name();
         assert!(self.consume_char() == '=');
         let value = self.parse_attr_value();
-        return (name, value);
+        (name, value)
     }
 
     fn parse_attr_value(&mut self) -> String {
@@ -88,7 +85,7 @@ impl Parser {
         assert!(open_quote == '"' || open_quote == '\'');
         let value = self.consume_while(|c| c != open_quote);
         assert!(self.consume_char() == open_quote);
-        return value;
+        value
     }
 
     fn parse_attributes(&mut self) -> Vec<(String, String)> {
@@ -101,7 +98,7 @@ impl Parser {
             let (name, value) = self.parse_attr();
             attributes.push((name, value));
         }
-        return attributes;
+        attributes
     }
 
     fn parse_nodes(&mut self) -> Vec<dom::Node> {
@@ -113,7 +110,7 @@ impl Parser {
             }
             nodes.push(self.parse_node());
         }
-        return nodes;
+        nodes
     }
 
     pub fn parse_no_root(source: String) -> Vec<dom::Node> {

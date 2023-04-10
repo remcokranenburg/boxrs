@@ -30,7 +30,7 @@ impl<'a> From<&'a StyledNode<'a>> for String {
                 output.push_str(" style=\"");
 
                 let mut specified_values: Vec<_> = styled_node.specified_values.iter().collect();
-                specified_values.sort_by(|&(a, _), &(b, _)| a.cmp(&b));
+                specified_values.sort_by(|&(a, _), &(b, _)| a.cmp(b));
 
                 for (key, value) in specified_values {
                     output.push_str(&format!("{}:{};", key, String::from(value)));
@@ -129,7 +129,7 @@ fn matching_rules<'a>(node: &Node, sheet: &'a Sheet) -> Vec<MatchedRule<'a>> {
 fn match_rule<'a>(node: &Node, rule: &'a Rule) -> Option<MatchedRule<'a>> {
     rule.selectors
         .iter()
-        .find(|selector| matches(node, *selector))
+        .find(|selector| matches(node, selector))
         .map(|selector| (selector.get_specificity(), rule))
 }
 
@@ -166,7 +166,7 @@ fn matches(node: &Node, selector: &Selector) -> bool {
             // Only matching selector components
             true
         }
-        Node::Text(_) => return false,
+        Node::Text(_) => false,
     }
 }
 
