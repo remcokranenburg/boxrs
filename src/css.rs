@@ -10,7 +10,9 @@ impl Sheet {
 impl From<&Sheet> for String {
     fn from(sheet: &Sheet) -> String {
         let Sheet(rules) = sheet;
-        rules.iter().fold("".to_owned(), |acc, rule| format!("{}{}", acc, String::from(rule)))
+        rules.iter().fold("".to_owned(), |acc, rule| {
+            format!("{}{}", acc, String::from(rule))
+        })
     }
 }
 
@@ -26,19 +28,26 @@ impl Rule {
     }
 
     pub fn add_declaration(mut self, name: &str, value: Value) -> Self {
-        self.declarations.push(Declaration { name: name.to_owned(), value: value });
+        self.declarations.push(Declaration {
+            name: name.to_owned(),
+            value: value,
+        });
         self
     }
 }
 
 impl From<&Rule> for String {
     fn from(rule: &Rule) -> String {
-        let selectors_str = rule.selectors.iter()
+        let selectors_str = rule
+            .selectors
+            .iter()
             .map(|selector| String::from(selector))
             .collect::<Vec<_>>()
             .join(",");
 
-        let declarations_str = rule.declarations.iter()
+        let declarations_str = rule
+            .declarations
+            .iter()
             .map(|declaration| String::from(declaration))
             .collect::<Vec<_>>()
             .join(";");
@@ -151,7 +160,7 @@ impl Value {
     pub fn to_px(&self) -> f32 {
         match *self {
             Value::Length(f, Unit::Px) => f, // TODO: device-independent pixels
-            _ => 0.0
+            _ => 0.0,
         }
     }
 }
@@ -192,16 +201,27 @@ pub fn sheet() -> Sheet {
 }
 
 pub fn rule() -> Rule {
-    Rule { selectors: vec![], declarations: vec![] }
+    Rule {
+        selectors: vec![],
+        declarations: vec![],
+    }
 }
 
 pub fn selector() -> Selector {
-    Selector{ tag: None, class: None, id: None, attr: None }
+    Selector {
+        tag: None,
+        class: None,
+        id: None,
+        attr: None,
+    }
 }
 
 impl From<&str> for Sheet {
     fn from(s: &str) -> Sheet {
-        let mut parser = Parser { cursor: 0, data: s.to_owned() };
+        let mut parser = Parser {
+            cursor: 0,
+            data: s.to_owned(),
+        };
         Sheet(parser.parse_rules())
     }
 }
@@ -217,7 +237,9 @@ impl Parser {
         let mut rules = Vec::new();
         loop {
             self.consume_whitespace();
-            if self.eof() { break }
+            if self.eof() {
+                break;
+            }
             rules.push(self.parse_rule());
         }
         rules
@@ -238,18 +260,26 @@ impl Parser {
             selectors.push(self.parse_simple_selector());
             self.consume_whitespace();
             match self.next_char() {
-                ',' => { self.consume_char(); self.consume_whitespace(); }
+                ',' => {
+                    self.consume_char();
+                    self.consume_whitespace();
+                }
                 '{' => break,
-                c   => panic!("Unexpected character {} in selector list", c)
+                c => panic!("Unexpected character {} in selector list", c),
             }
         }
         // Return selectors with highest specificity first, for use in matching.
-        selectors.sort_by(|a,b| b.get_specificity().cmp(&a.get_specificity()));
+        selectors.sort_by(|a, b| b.get_specificity().cmp(&a.get_specificity()));
         selectors
     }
 
     fn parse_simple_selector(&mut self) -> Selector {
-        let mut selector = Selector { tag: None, id: None, class: None, attr: None };
+        let mut selector = Selector {
+            tag: None,
+            id: None,
+            class: None,
+            attr: None,
+        };
         while !self.eof() {
             match self.next_char() {
                 '#' => {
@@ -276,7 +306,7 @@ impl Parser {
                 c if valid_identifier_char(c) => {
                     selector.tag = Some(self.parse_identifier());
                 }
-                _ => break
+                _ => break,
             }
         }
         selector
@@ -315,7 +345,7 @@ impl Parser {
         match self.next_char() {
             '0'..='9' => self.parse_length(),
             '#' => self.parse_color(),
-            _ => Value::Keyword(self.parse_identifier())
+            _ => Value::Keyword(self.parse_identifier()),
         }
     }
 
@@ -326,7 +356,7 @@ impl Parser {
     fn parse_float(&mut self) -> f32 {
         let s = self.consume_while(|c| match c {
             '0'..='9' | '.' => true,
-            _ => false
+            _ => false,
         });
         s.parse().unwrap()
     }
@@ -334,7 +364,7 @@ impl Parser {
     fn parse_unit(&mut self) -> Unit {
         match &*self.parse_identifier().to_ascii_lowercase() {
             "px" => Unit::Px,
-            _ => panic!("unrecognized unit")
+            _ => panic!("unrecognized unit"),
         }
     }
 
@@ -344,11 +374,12 @@ impl Parser {
             r: self.parse_hex_pair(),
             g: self.parse_hex_pair(),
             b: self.parse_hex_pair(),
-            a: 255 })
+            a: 255,
+        })
     }
 
     fn parse_hex_pair(&mut self) -> u8 {
-        let s = &self.data[self.cursor .. self.cursor + 2];
+        let s = &self.data[self.cursor..self.cursor + 2];
         self.cursor += 2;
         u8::from_str_radix(s, 16).unwrap()
     }
@@ -358,7 +389,9 @@ impl Parser {
     }
 
     fn consume_while<F>(&mut self, test: F) -> String
-            where F: Fn(char) -> bool {
+    where
+        F: Fn(char) -> bool,
+    {
         let mut result = String::new();
         while !self.eof() && test(self.next_char()) {
             result.push(self.consume_char());
@@ -401,19 +434,25 @@ mod tests {
 
     #[test]
     fn test_to_string() {
-        let actual = sheet()
-            .add_rule(rule()
-                .add_selector(selector().add_tag("body").add_attr("class", AttrOp::Eq, "foo"))
+        let actual = sheet().add_rule(
+            rule()
+                .add_selector(
+                    selector()
+                        .add_tag("body")
+                        .add_attr("class", AttrOp::Eq, "foo"),
+                )
                 .add_selector(selector().add_tag("p"))
                 .add_declaration("margin", Value::Keyword("auto".to_owned()))
-                .add_declaration("width", Value::Length(24.0, Unit::Px)));
+                .add_declaration("width", Value::Length(24.0, Unit::Px)),
+        );
         let expected = r#"body[class="foo"],p{margin:auto;width:24px}"#;
         assert_eq!(String::from(&actual), expected);
     }
 
     #[test]
     fn test_from_str() {
-        let css = Sheet::from("
+        let css = Sheet::from(
+            "
             a, b {
                 display: block;
                 background-color: #ff0000;
@@ -428,7 +467,8 @@ mod tests {
                 width: 32px;
                 height: 24px;
             }
-        ");
+        ",
+        );
 
         assert_eq!(css.0[0].selectors[0].tag, Some("a".to_owned()));
         assert_eq!(css.0[0].selectors[1].tag, Some("b".to_owned()));
