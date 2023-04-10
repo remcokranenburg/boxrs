@@ -3,8 +3,8 @@ extern crate image;
 
 use std::default::Default;
 use std::env;
-use std::io::Read;
 use std::fs::File;
+use std::io::Read;
 
 use boxrs::css::Color;
 
@@ -21,7 +21,7 @@ fn main() {
     let height = 600;
 
     let mut viewport: boxrs::layout::Dimensions = Default::default();
-    viewport.content.width  = width as f32;
+    viewport.content.width = width as f32;
     viewport.content.height = height as f32;
 
     // Parsing and rendering:
@@ -34,7 +34,12 @@ fn main() {
     let filename = "output.png";
 
     // Rasterize:
-    let background = Color { r: 255, g: 255, b: 255, a: 255 };
+    let background = Color {
+        r: 255,
+        g: 255,
+        b: 255,
+        a: 255,
+    };
     let mut canvas = vec![background; width * height];
 
     for item in display_list {
@@ -46,8 +51,8 @@ fn main() {
                 let x1 = (rect.x + rect.width).clamp(0.0, width as f32) as usize;
                 let y1 = (rect.y + rect.height).clamp(0.0, height as f32) as usize;
 
-                for y in y0 .. y1 {
-                    for x in x0 .. x1 {
+                for y in y0..y1 {
+                    for x in x0..x1 {
                         // TODO: alpha compositing with existing pixel
                         canvas[y * width + x] = color.clone();
                     }
@@ -71,7 +76,10 @@ fn main() {
 
 fn read_source(filename: &str) -> String {
     let mut s = String::new();
-    File::open(filename).unwrap().read_to_string(&mut s).unwrap();
+    File::open(filename)
+        .unwrap()
+        .read_to_string(&mut s)
+        .unwrap();
     s
 }
 
