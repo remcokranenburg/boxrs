@@ -1,4 +1,5 @@
 use std::cmp::Reverse;
+use std::str::FromStr;
 
 pub struct Sheet(pub Vec<Rule>);
 
@@ -140,6 +141,7 @@ impl From<&AttrOp> for String {
     }
 }
 
+#[derive(Clone, Debug, PartialEq)]
 pub struct Declaration {
     pub name: String,
     pub value: Value,
@@ -225,6 +227,93 @@ impl From<&str> for Sheet {
             data: s.to_owned(),
         };
         Sheet(parser.parse_rules())
+    }
+}
+
+peg::parser! {
+    grammar css_parser() for str {
+        pub rule declaration() -> Declaration
+            = n:identifier() whitespace()* ":" whitespace()* v:value() {
+                Declaration { name: n, value: v }
+            }
+
+        pub rule value() -> Value
+            = color_value()
+            / length_value()
+            / keyword_value()
+
+        pub rule keyword_value() -> Value
+            = s:identifier() { Value::Keyword(s.to_owned()) }
+
+        pub rule length_value() -> Value
+            = "0" { Value::Length(0.0, Unit::Px) }
+            / n:f32_value() "px" { Value::Length(n, Unit::Px) }
+
+        pub rule color_value() -> Value
+            = v:(
+                color_rgb_value() /
+                color_rgba_value() /
+                color_hex_value_three() /
+                color_hex_value_six()
+            ) { Value::ColorValue(v) }
+
+        pub rule color_rgb_value() -> Color
+            = "rgb(" r:dec_value() "," g:dec_value() "," b:dec_value() ")" {
+                Color { r, g, b, a: 255 }
+            }
+
+        pub rule color_rgba_value() -> Color
+            = "rgba(" r:dec_value() "," g:dec_value() "," b:dec_value() "," a:dec_value() ")" {
+                Color { r, g, b, a }
+            }
+
+        pub rule color_hex_value_three() -> Color
+            = "#" v:hex_value_one()*<3,3> {
+                Color {
+                    r: v[0] + v[0] * 16,
+                    g: v[1] + v[1] * 16,
+                    b: v[2] + v[2] * 16,
+                    a: 255,
+                }
+            }
+            / expected!("# followed by three hexadecimal digits")
+
+        pub rule color_hex_value_six() -> Color
+            = "#" v:hex_value_two()*<3,3> {
+                Color {
+                    r: v[0],
+                    g: v[1],
+                    b: v[2],
+                    a: 255,
+                }
+            }
+            / expected!("# followed by six hexadecimal digits")
+
+        pub rule f32_value() -> f32
+            = n:$(
+                "-"? ['0'..='9']+ ("." ['0'..='9']+)? /
+                "-"? "." ['0'..='9']+
+            ) { f32::from_str(n).unwrap() }
+
+        pub rule dec_value() -> u8
+            = n:$(['0'..='9']+) { u8::from_str_radix(n, 10).unwrap() }
+
+        pub rule hex_value_one() -> u8
+            = n:$(['0'..='9' | 'a'..='f' | 'A'..='F']) { u8::from_str_radix(n, 16).unwrap() }
+
+        pub rule hex_value_two() -> u8
+            = n:$(['0'..='9' | 'a'..='f' | 'A'..='F']*<2,2>) { u8::from_str_radix(n, 16).unwrap() }
+
+        pub rule identifier() -> String
+            = s:$(['a'..='z' | 'A'..='Z'] ['a'..='z' | 'A'..='Z' | '0'..='9' | '-' | '_']+) {
+                s.to_owned()
+            }
+
+        pub rule word()
+            = [^ ' ' | '\r' | '\n' | '\t']+
+
+        pub rule whitespace()
+            = [' ' | '\r' | '\n' | '\t']
     }
 }
 
@@ -427,6 +516,65 @@ fn valid_identifier_char(c: char) -> bool {
 #[cfg(test)]
 mod tests {
     use crate::css::*;
+
+    #[test]
+    fn test_declaration() {
+        let actual = css_parser::declaration("foo: bar");
+        let expected = Ok(Declaration {
+            name: "foo".to_owned(),
+            value: Value::Keyword("bar".to_owned())
+        });
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_color_value() {
+        let actual = css_parser::color_value("rgb(1,2,3)");
+        let expected = Ok(Value::ColorValue(Color { r: 1, g: 2, b: 3, a: 255 }));
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_color_rgb_value() {
+        let actual = css_parser::color_rgb_value("rgb(1,2,3)");
+        let expected = Ok(Color { r: 1, g: 2, b: 3, a: 255 });
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_color_rgba_value() {
+        let actual = css_parser::color_rgba_value("rgba(1,2,3,4)");
+        let expected = Ok(Color { r: 1, g: 2, b: 3, a: 4 });
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_hex_value_one() {
+        let actual = css_parser::hex_value_one("f");
+        let expected = Ok(15);
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_hex_value_two() {
+        let actual = css_parser::hex_value_two("ff");
+        let expected = Ok(255);
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_color_hex_value_three() {
+        let actual = css_parser::color_hex_value_three("#abc");
+        let expected = Ok(Color { r: 170, g: 187, b: 204, a: 255 });
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_color_hex_value_six() {
+        let actual = css_parser::color_hex_value_six("#abcdef");
+        let expected = Ok(Color { r: 171, g: 205, b: 239, a: 255 });
+        assert_eq!(actual, expected);
+    }
 
     #[test]
     fn test_to_string() {
