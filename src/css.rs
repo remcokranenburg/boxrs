@@ -61,11 +61,12 @@ impl From<&Rule> for String {
 
 pub type Specificity = (usize, usize, usize);
 
+#[derive(Clone, Debug, PartialEq)]
 pub struct Selector {
     pub tag: Option<String>,
-    pub class: Option<String>,
+    pub class: Vec<String>,
     pub id: Option<String>,
-    pub attr: Option<(String, AttrOp, String)>,
+    pub attr: Vec<(String, AttrOp, String)>,
 }
 
 impl Selector {
@@ -75,7 +76,7 @@ impl Selector {
     }
 
     pub fn add_class(mut self, class_name: &str) -> Self {
-        self.class = Some(class_name.to_owned());
+        self.class.push(class_name.to_owned());
         self
     }
 
@@ -85,7 +86,7 @@ impl Selector {
     }
 
     pub fn add_attr(mut self, attr_name: &str, attr_op: AttrOp, attr_value: &str) -> Self {
-        self.attr = Some((attr_name.to_owned(), attr_op, attr_value.to_owned()));
+        self.attr.push((attr_name.to_owned(), attr_op, attr_value.to_owned()));
         self
     }
 
@@ -105,9 +106,9 @@ impl From<&Selector> for String {
             selector_str.push_str(tag_name);
         }
 
-        if let Some(ref class_name) = selector.class {
+        for c in &selector.class {
             selector_str.push('.');
-            selector_str.push_str(class_name);
+            selector_str.push_str(&c);
         }
 
         if let Some(ref id_name) = selector.id {
@@ -115,12 +116,12 @@ impl From<&Selector> for String {
             selector_str.push_str(id_name);
         }
 
-        if let Some((ref attr_name, ref attr_op, ref attr_value)) = selector.attr {
+        for a in &selector.attr {
             selector_str.push('[');
-            selector_str.push_str(attr_name);
-            selector_str.push_str(&String::from(attr_op));
+            selector_str.push_str(&a.0);
+            selector_str.push_str(&String::from(&a.1));
             selector_str.push('"');
-            selector_str.push_str(attr_value);
+            selector_str.push_str(&a.2);
             selector_str.push('"');
             selector_str.push(']');
         }
@@ -129,6 +130,7 @@ impl From<&Selector> for String {
     }
 }
 
+#[derive(Clone, Debug, PartialEq)]
 pub enum AttrOp {
     Eq,
 }
@@ -214,26 +216,115 @@ pub fn rule() -> Rule {
 pub fn selector() -> Selector {
     Selector {
         tag: None,
-        class: None,
+        class: vec![],
         id: None,
-        attr: None,
+        attr: vec![],
     }
 }
 
 impl From<&str> for Sheet {
     fn from(s: &str) -> Sheet {
-        let mut parser = Parser {
-            cursor: 0,
-            data: s.to_owned(),
-        };
-        Sheet(parser.parse_rules())
+        css_parser::rules(s).unwrap()
     }
+}
+
+
+enum SelectorComponent {
+    Id(String),
+    Class(String),
+    Attribute(String, AttrOp, String),
+    Tag(String),
+    Universal,
 }
 
 peg::parser! {
     grammar css_parser() for str {
+        pub rule rules() -> Sheet
+            = __* r:(css_rule() ** (__*)) __* { Sheet(r) }
+
+        pub rule css_rule() -> Rule
+            = s:selectors() __* d:declaration_block() {
+                Rule {
+                    selectors: s,
+                    declarations: d,
+                }
+            }
+
+        pub rule selectors() -> Vec<Selector>
+            = selectors:(simple_selector() ++ selector_delimiter()) {
+                let mut ordered_selectors = selectors as Vec<Selector>;
+                ordered_selectors.sort_by_key(|s| Reverse(s.get_specificity()));
+                ordered_selectors
+            }
+
+        rule selector_delimiter()
+            = __* "," __*
+
+        pub rule simple_selector() -> Selector
+            = components:(
+                id_selector() /
+                class_selector() /
+                attribute_selector() /
+                tag_selector() /
+                universal_selector()
+            )+ {?
+                let mut ids = vec![];
+                let mut classes = vec![];
+                let mut attributes = vec![];
+                let mut tags = vec![];
+
+                for c in components {
+                    match c {
+                        SelectorComponent::Id(s) => ids.push(s),
+                        SelectorComponent::Class(s) => classes.push(s),
+                        SelectorComponent::Attribute(n, o, v) => attributes.push((n, o, v)),
+                        SelectorComponent::Tag(s) => tags.push(s),
+                        SelectorComponent::Universal => (),
+                    }
+                }
+
+                if ids.len() > 1 {
+                    return Err("a maximum of one id");
+                }
+
+                if tags.len() > 1 {
+                    return Err("a maximum of one tag");
+                }
+
+                Ok(Selector {
+                    tag: if tags.len() == 0 { None } else { Some(tags[0].clone()) },
+                    class: classes,
+                    id: if ids.len() == 0 { None } else { Some(ids[0].clone()) },
+                    attr: attributes,
+                })
+            }
+
+        rule id_selector() -> SelectorComponent
+            = "#" s:identifier() { SelectorComponent::Id(s) }
+
+        rule class_selector() -> SelectorComponent
+            = "." s:identifier() { SelectorComponent::Class(s) }
+
+        rule attribute_selector() -> SelectorComponent
+            = "[" n:identifier() o:operator() v:identifier() "]" { SelectorComponent::Attribute(n, o, v) }
+
+        pub rule operator() -> AttrOp
+            = "=" { AttrOp::Eq }
+
+        rule tag_selector() -> SelectorComponent
+            = s:identifier() { SelectorComponent::Tag(s) }
+
+        rule universal_selector() -> SelectorComponent
+            = "*" { SelectorComponent::Universal }
+
+        pub rule declaration_block() -> Vec<Declaration>
+            = __* "{" __* d:(declaration() ** decl_delimiter()) decl_delimiter()? __* "}" __* { d }
+
+        pub rule decl_delimiter()
+            = __* ";" __*
+
         pub rule declaration() -> Declaration
-            = n:identifier() whitespace()* ":" whitespace()* v:value() {
+            = n:identifier() __* ":" __* v:value() {
                 Declaration { name: n, value: v }
             }
 
@@ -246,15 +337,15 @@ peg::parser! {
             = s:identifier() { Value::Keyword(s.to_owned()) }
 
         pub rule length_value() -> Value
-            = "0" { Value::Length(0.0, Unit::Px) }
+            = "0" "px"? { Value::Length(0.0, Unit::Px) }
             / n:f32_value() "px" { Value::Length(n, Unit::Px) }
 
         pub rule color_value() -> Value
             = v:(
                 color_rgb_value() /
                 color_rgba_value() /
-                color_hex_value_three() /
-                color_hex_value_six()
+                color_hex_value_six() /
+                color_hex_value_three()
             ) { Value::ColorValue(v) }
 
         pub rule color_rgb_value() -> Color
@@ -305,217 +396,55 @@ peg::parser! {
             = n:$(['0'..='9' | 'a'..='f' | 'A'..='F']*<2,2>) { u8::from_str_radix(n, 16).unwrap() }
 
         pub rule identifier() -> String
-            = s:$(['a'..='z' | 'A'..='Z'] ['a'..='z' | 'A'..='Z' | '0'..='9' | '-' | '_']+) {
+            = s:$(['a'..='z' | 'A'..='Z'] ['a'..='z' | 'A'..='Z' | '0'..='9' | '-' | '_']*) {
                 s.to_owned()
             }
 
         pub rule word()
             = [^ ' ' | '\r' | '\n' | '\t']+
 
-        pub rule whitespace()
+        pub rule __
             = [' ' | '\r' | '\n' | '\t']
-    }
-}
-
-struct Parser {
-    cursor: usize,
-    data: String,
-}
-
-impl Parser {
-    /// Parse a list of rule sets, separated by optional whitespace.
-    fn parse_rules(&mut self) -> Vec<Rule> {
-        let mut rules = Vec::new();
-        loop {
-            self.consume_whitespace();
-            if self.eof() {
-                break;
-            }
-            rules.push(self.parse_rule());
-        }
-        rules
-    }
-
-    /// Parse a rule set: `<selectors> { <declarations> }`.
-    fn parse_rule(&mut self) -> Rule {
-        Rule {
-            selectors: self.parse_selectors(),
-            declarations: self.parse_declarations(),
-        }
-    }
-
-    /// Parse a comma-separated list of selectors.
-    fn parse_selectors(&mut self) -> Vec<Selector> {
-        let mut selectors = Vec::new();
-        loop {
-            selectors.push(self.parse_simple_selector());
-            self.consume_whitespace();
-            match self.next_char() {
-                ',' => {
-                    self.consume_char();
-                    self.consume_whitespace();
-                }
-                '{' => break,
-                c => panic!("Unexpected character {} in selector list", c),
-            }
-        }
-        // Return selectors with highest specificity first, for use in matching.
-        selectors.sort_by_key(|s| Reverse(s.get_specificity()));
-        selectors
-    }
-
-    fn parse_simple_selector(&mut self) -> Selector {
-        let mut selector = Selector {
-            tag: None,
-            id: None,
-            class: None,
-            attr: None,
-        };
-        while !self.eof() {
-            match self.next_char() {
-                '#' => {
-                    self.consume_char();
-                    selector.id = Some(self.parse_identifier());
-                }
-                '.' => {
-                    self.consume_char();
-                    selector.class = Some(self.parse_identifier());
-                }
-                // '[' => {
-                //     self.consume_char();
-                //     let attr = self.parse_attribute();
-                //     self.consume_whitespace();
-                //     let op = self.consume_char();
-                //     self.consume_whitespace();
-                //     let value = self.parse_attribute_value();
-                //     selector.attr = Some((attr, op, value));
-                // }
-                '*' => {
-                    // universal selector
-                    self.consume_char();
-                }
-                c if valid_identifier_char(c) => {
-                    selector.tag = Some(self.parse_identifier());
-                }
-                _ => break,
-            }
-        }
-        selector
-    }
-
-    fn parse_declarations(&mut self) -> Vec<Declaration> {
-        assert_eq!(self.consume_char(), '{');
-        let mut declarations = Vec::new();
-        loop {
-            self.consume_whitespace();
-            if self.next_char() == '}' {
-                self.consume_char();
-                break;
-            }
-            declarations.push(self.parse_declaration());
-        }
-        declarations
-    }
-
-    fn parse_declaration(&mut self) -> Declaration {
-        let name = self.parse_identifier();
-        self.consume_whitespace();
-        assert_eq!(self.consume_char(), ':');
-        self.consume_whitespace();
-        let value = self.parse_value();
-        self.consume_whitespace();
-        assert_eq!(self.consume_char(), ';');
-
-        Declaration { name, value }
-    }
-
-    fn parse_value(&mut self) -> Value {
-        match self.next_char() {
-            '0'..='9' => self.parse_length(),
-            '#' => self.parse_color(),
-            _ => Value::Keyword(self.parse_identifier()),
-        }
-    }
-
-    fn parse_length(&mut self) -> Value {
-        Value::Length(self.parse_float(), self.parse_unit())
-    }
-
-    fn parse_float(&mut self) -> f32 {
-        let s = self.consume_while(|c| matches!(c, '0'..='9' | '.'));
-        s.parse().unwrap()
-    }
-
-    fn parse_unit(&mut self) -> Unit {
-        match &*self.parse_identifier().to_ascii_lowercase() {
-            "px" => Unit::Px,
-            _ => panic!("unrecognized unit"),
-        }
-    }
-
-    fn parse_color(&mut self) -> Value {
-        assert_eq!(self.consume_char(), '#');
-        Value::ColorValue(Color {
-            r: self.parse_hex_pair(),
-            g: self.parse_hex_pair(),
-            b: self.parse_hex_pair(),
-            a: 255,
-        })
-    }
-
-    fn parse_hex_pair(&mut self) -> u8 {
-        let s = &self.data[self.cursor..self.cursor + 2];
-        self.cursor += 2;
-        u8::from_str_radix(s, 16).unwrap()
-    }
-
-    fn parse_identifier(&mut self) -> String {
-        self.consume_while(valid_identifier_char)
-    }
-
-    fn consume_while<F>(&mut self, test: F) -> String
-    where
-        F: Fn(char) -> bool,
-    {
-        let mut result = String::new();
-        while !self.eof() && test(self.next_char()) {
-            result.push(self.consume_char());
-        }
-        result
-    }
-
-    fn consume_whitespace(&mut self) {
-        self.consume_while(char::is_whitespace);
-    }
-
-    fn consume_char(&mut self) -> char {
-        let mut iter = self.data[self.cursor..].char_indices();
-        let (_, current_char) = iter.next().unwrap();
-        let (next_cursor, _) = iter.next().unwrap_or((1, ' '));
-        self.cursor += next_cursor;
-
-        current_char
-    }
-
-    fn next_char(&self) -> char {
-        self.data[self.cursor..].chars().next().unwrap()
-    }
-
-    fn eof(&self) -> bool {
-        self.cursor >= self.data.len()
-    }
-}
-
-fn valid_identifier_char(c: char) -> bool {
-    match c {
-        'a'..='z' | 'A'..='Z' | '0'..='9' | '-' | '_' => true, // TODO: Include U+00A0 and higher.
-        _ => false,
     }
 }
 
 #[cfg(test)]
 mod tests {
     use crate::css::*;
+
+    #[test]
+    fn test_selectors() {
+        let actual = css_parser::selectors("a");
+        let expected = Ok(vec![
+            Selector { tag: Some("a".to_owned()), id: None, class: vec![], attr: vec![] },
+            // Selector { tag: Some("b".to_owned()), id: None, class: vec![], attr: vec![] },
+        ]);
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_identifier() {
+        let actual = css_parser::identifier("a");
+        let expected = Ok("a".to_owned());
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_declaration_block() {
+        let actual = css_parser::declaration_block(
+            "
+            {
+                foo: bar;
+                baz: 42px;
+            }
+            "
+        );
+        let expected = Ok(vec![
+            Declaration { name: "foo".to_owned(), value: Value::Keyword("bar".to_owned()) },
+            Declaration { name: "baz".to_owned(), value: Value::Length(42.0, Unit::Px) },
+        ]);
+        assert_eq!(actual, expected);
+    }
 
     #[test]
     fn test_declaration() {
@@ -528,23 +457,16 @@ mod tests {
     }
 
     #[test]
-    fn test_color_value() {
+    fn test_color_rgb_value() {
         let actual = css_parser::color_value("rgb(1,2,3)");
         let expected = Ok(Value::ColorValue(Color { r: 1, g: 2, b: 3, a: 255 }));
         assert_eq!(actual, expected);
     }
 
     #[test]
-    fn test_color_rgb_value() {
-        let actual = css_parser::color_rgb_value("rgb(1,2,3)");
-        let expected = Ok(Color { r: 1, g: 2, b: 3, a: 255 });
-        assert_eq!(actual, expected);
-    }
-
-    #[test]
     fn test_color_rgba_value() {
-        let actual = css_parser::color_rgba_value("rgba(1,2,3,4)");
-        let expected = Ok(Color { r: 1, g: 2, b: 3, a: 4 });
+        let actual = css_parser::color_value("rgba(1,2,3,4)");
+        let expected = Ok(Value::ColorValue(Color { r: 1, g: 2, b: 3, a: 4 }));
         assert_eq!(actual, expected);
     }
 
@@ -564,15 +486,15 @@ mod tests {
 
     #[test]
     fn test_color_hex_value_three() {
-        let actual = css_parser::color_hex_value_three("#abc");
-        let expected = Ok(Color { r: 170, g: 187, b: 204, a: 255 });
+        let actual = css_parser::color_value("#abc");
+        let expected = Ok(Value::ColorValue(Color { r: 170, g: 187, b: 204, a: 255 }));
         assert_eq!(actual, expected);
     }
 
     #[test]
     fn test_color_hex_value_six() {
-        let actual = css_parser::color_hex_value_six("#abcdef");
-        let expected = Ok(Color { r: 171, g: 205, b: 239, a: 255 });
+        let actual = css_parser::color_value("#abcdef");
+        let expected = Ok(Value::ColorValue(Color { r: 171, g: 205, b: 239, a: 255 }));
         assert_eq!(actual, expected);
     }
 
