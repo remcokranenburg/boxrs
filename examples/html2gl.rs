@@ -6,6 +6,7 @@ use std::default::Default;
 use std::env;
 use std::fs::File;
 use std::io::Read;
+use std::path::Path;
 
 use boxrs::css::Color;
 use boxrs::dom::Node;
@@ -83,19 +84,21 @@ fn main() {
 
     // TODO: of course, really replace this with something that keeps track of all sheets
 
+    let base = Path::new(&html_filename).parent().unwrap();
+
     let mut css_filename = None;
 
     if let Some(Node::Element { attrs, .. }) = root_node.get_elements_by_tag_name("link").first() {
         if attrs.contains(&("rel".to_owned(), "stylesheet".to_owned())) {
             for attr in attrs {
                 if attr.0 == "href" {
-                    css_filename = Some(attr.1.clone());
+                    css_filename = Some(base.join(attr.1.clone()));
                 }
             }
         }
     }
 
-    println!("Opening CSS file {}", css_filename.as_ref().unwrap());
+    println!("Opening CSS file {}", css_filename.as_ref().unwrap().display());
 
     let css = read_source(&css_filename.unwrap());
 
@@ -193,7 +196,7 @@ fn main() {
     });
 }
 
-fn read_source(filename: &str) -> String {
+fn read_source<P: AsRef<Path>>(filename: P) -> String {
     let mut s = String::new();
     File::open(filename)
         .unwrap()

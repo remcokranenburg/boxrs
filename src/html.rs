@@ -105,6 +105,12 @@ impl Parser {
         let mut nodes = Vec::new();
         loop {
             self.consume_whitespace();
+
+            if self.starts_with("<!") {
+                self.consume_while(|c| c != '>');
+                continue
+            }
+
             if self.eof() || self.starts_with("</") {
                 break;
             }
@@ -125,7 +131,7 @@ impl Parser {
         let mut nodes = Parser::parse_no_root(source);
 
         if nodes.len() == 1 {
-            nodes.swap_remove(0)
+            nodes.pop().unwrap()
         } else {
             dom::elem("html").add_children(nodes)
         }
