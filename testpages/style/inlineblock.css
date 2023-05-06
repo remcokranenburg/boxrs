@@ -1,0 +1,41 @@
+* {
+    display: block;
+}
+
+html {
+    margin: 0;
+    background-color: white;
+}
+
+body {
+    width: 600px;
+    padding: 0;
+    border-color: #000;
+    border-width: 1px;
+    border-style: solid;
+    margin: 0;
+    background: #faa;
+    line-height: 0;
+}
+
+head {
+    display: none;
+}
+
+a, b, c, d, e, f, g {
+    display: inline-block;
+    width: 100px;
+    height: 50px;
+    margin: 5px;
+    border-color: #000;
+    border-width: 1px;
+    border-style: solid;
+}
+
+a { background: #ff0000; }
+b { background: #ffa500; }
+c { background: #ffff00; }
+d { background: #008000; }
+e { background: #0000ff; }
+f { background: #4b0082; }
+g { background: #800080; }
