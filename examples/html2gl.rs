@@ -158,8 +158,18 @@ fn main() {
 
         uniform vec4 in_color;
 
+        vec4 normalize(vec4 c) {
+            return c / 255;
+        }
+
+        vec3 to_gamma_curve(vec3 c)
+        {
+            return pow(c, vec3(2.2));
+        }
+
         void main() {
-            color = in_color;
+            vec4 normalized = normalize(in_color);
+            color = vec4(to_gamma_curve(normalized.rgb), normalized.a);
         }
     "#;
 
