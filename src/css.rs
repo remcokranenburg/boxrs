@@ -240,10 +240,10 @@ enum SelectorComponent {
 peg::parser! {
     grammar css_parser() for str {
         pub rule rules() -> Sheet
-            = __* r:(css_rule() ** (__*)) __* { Sheet(r) }
+            = __ r:(css_rule() ** __) __ { Sheet(r) }
 
         pub rule css_rule() -> Rule
-            = s:selectors() __* d:declaration_block() {
+            = s:selectors() __ d:declaration_block() {
                 Rule {
                     selectors: s,
                     declarations: d,
@@ -258,7 +258,7 @@ peg::parser! {
             }
 
         rule selector_delimiter()
-            = __* "," __*
+            = __ "," __
 
         pub rule simple_selector() -> Selector
             = components:(
@@ -318,13 +318,13 @@ peg::parser! {
             = "*" { SelectorComponent::Universal }
 
         pub rule declaration_block() -> Vec<Declaration>
-            = __* "{" __* d:(declaration() ** decl_delimiter()) decl_delimiter()? __* "}" __* { d }
+            = __ "{" __ d:(declaration() ** decl_delimiter()) decl_delimiter()? __ "}" __ { d }
 
         pub rule decl_delimiter()
-            = __* ";" __*
+            = __ ";" __
 
         pub rule declaration() -> Declaration
-            = n:identifier() __* ":" __* v:value() {
+            = n:identifier() __ ":" __ v:value() {
                 Declaration { name: n, value: v }
             }
 
@@ -400,17 +400,27 @@ peg::parser! {
                 s.to_owned()
             }
 
-        pub rule word()
-            = [^ ' ' | '\r' | '\n' | '\t']+
-
         pub rule __
-            = [' ' | '\r' | '\n' | '\t']
+            = (whitespace() / comment())*
+
+        pub rule whitespace()
+            = " " / "\r" / "\n" / "\t"
+
+        pub rule comment()
+            = "/*" (!"*/"[_])* "*/"
     }
 }
 
 #[cfg(test)]
 mod tests {
     use crate::css::*;
+
+    #[test]
+    fn test_comment() {
+        let actual = css_parser::comment("/* foo */");
+        let expected = Ok(());
+        assert_eq!(actual, expected);
+    }
 
     #[test]
     fn test_selectors() {
