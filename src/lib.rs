@@ -15,17 +15,14 @@ pub fn parse_css(c: &str) -> css::Sheet {
     css::Sheet::from(c)
 }
 
-pub fn build_style_tree<'a>(h: &'a dom::Node, c: &'a css::Sheet) -> style::StyledNode<'a> {
+pub fn build_style_tree<'a>(h: dom::NodeRef, c: &'a css::Sheet) -> style::StyledNodeRef {
     style::style_tree(h, c)
 }
 
-pub fn build_layout_tree<'a>(
-    s: &'a style::StyledNode,
-    d: layout::Dimensions,
-) -> layout::LayoutBox<'a> {
+pub fn build_layout_tree(s: style::StyledNodeRef, d: layout::Dimensions) -> layout::LayoutBoxRef {
     layout::layout_tree(s, d)
 }
 
-pub fn build_display_list(l: &layout::LayoutBox) -> painting::DisplayList {
+pub fn build_display_list(l: layout::LayoutBoxRef) -> painting::DisplayList {
     painting::build_display_list(l)
 }

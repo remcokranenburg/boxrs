@@ -1,5 +1,5 @@
 use crate::css::{Color, Value};
-use crate::layout::{AnonymousBlock, BlockNode, InlineNode, LayoutBox, Rect};
+use crate::layout::{AnonymousBlock, BlockNode, InlineNode, InlineBlockNode, LayoutBox, Rect};
 
 #[derive(Debug)]
 pub enum DisplayCommand {
@@ -88,7 +88,7 @@ fn render_borders(list: &mut DisplayList, layout_box: &LayoutBox) {
 /// Return the specified color for CSS property `name`, or None if no color was specified.
 fn get_color(layout_box: &LayoutBox, name: &str) -> Option<Color> {
     match layout_box.box_type {
-        BlockNode(style) | InlineNode(style) => match style.value(name) {
+        BlockNode(style) | InlineNode(style) | InlineBlockNode(style) => match style.value(name) {
             Some(Value::ColorValue(color)) => Some(color),
             _ => None,
         },

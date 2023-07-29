@@ -1,85 +1,103 @@
+use std::cell::RefCell;
 use std::collections::HashSet;
+use std::ops::Deref;
+use std::rc::Rc;
 
-use crate::html::Parser;
+use crate::html::html_parser;
 
 #[derive(Debug)]
-pub enum Node {
+pub struct NodeRef(Rc<RefCell<Node>>);
+
+impl NodeRef {
+    pub fn new(n: Node) -> Self {
+        Self(Rc::new(RefCell::new(n)))
+    }
+}
+
+impl Deref for NodeRef {
+    type Target = Rc<RefCell<Node>>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+#[derive(Debug)]
+pub struct Node {
+    data: NodeData,
+    children: Vec<NodeRef>,
+}
+
+#[derive(Debug)]
+pub enum NodeData {
     Element {
         tag: String,
         attrs: Vec<(String, String)>,
-        children: Vec<Node>,
     },
     Text(String),
 }
 
 impl Node {
-    pub fn elem(tag: &str) -> Self {
-        Node::Element {
-            tag: tag.to_owned(),
-            attrs: vec![],
+    pub fn elem(tag: &str) -> NodeRef {
+        NodeRef::new(Node {
+            data: NodeData::Element {
+                tag: tag.to_owned(),
+                attrs: vec![],
+            },
             children: vec![],
-        }
+        })
     }
 
-    pub fn text(t: &str) -> Self {
-        Node::Text(t.to_owned())
+    pub fn text(t: &str) -> NodeRef {
+        NodeRef::new(Node {
+            data: NodeData::Text(t.to_owned()),
+            children: vec![],
+        })
     }
 
     pub fn add_text(self, t: &str) -> Self {
-        self.add_child(text(t))
-    }
-
-    pub fn add_child(mut self, c: Self) -> Self {
-        if let Node::Element {
-            ref mut children, ..
-        } = self
-        {
-            children.push(c);
-        }
+        self.add_child(text(t));
         self
     }
 
-    pub fn add_children(mut self, cs: Vec<Self>) -> Self {
-        if let Node::Element {
-            ref mut children, ..
-        } = self
-        {
-            for item in cs {
-                children.push(item)
-            }
+    pub fn add_child(mut self, c: NodeRef) -> Self {
+        self.children.push(c);
+        self
+    }
+
+    pub fn add_children(mut self, cs: Vec<NodeRef>) -> Self {
+        for item in cs {
+            self.children.push(item);
         }
         self
     }
 
     pub fn add_attr(mut self, key: &str, value: &str) -> Self {
-        if let Node::Element { ref mut attrs, .. } = self {
+        if let NodeData::Element { ref mut attrs, .. } = self.data {
             attrs.push((key.to_owned(), value.to_owned()));
         }
         self
     }
 
     pub fn add_attrs(mut self, kvs: Vec<(String, String)>) -> Self {
-        if let Node::Element { ref mut attrs, .. } = self {
+        if let NodeData::Element { ref mut attrs, .. } = self.data {
             for item in kvs {
-                attrs.push(item)
+                attrs.push(item);
             }
         }
         self
     }
 
     pub fn inner_html(mut self, html: &str) -> Self {
-        if let Node::Element {
-            ref mut children, ..
-        } = self
-        {
-            children.clear();
-            children.append(&mut Parser::parse_no_root(html.to_owned()));
+        if let NodeData::Element { .. } = self.data {
+            self.children.clear();
+            self.children.append(&mut html_parser::nodes(html).unwrap());
         }
         self
     }
 
     pub fn get_id(&self) -> Option<&str> {
-        if let Node::Element { ref attrs, .. } = self {
+        if let NodeData::Element { ref attrs, .. } = self.data {
             for attr in attrs {
                 if attr.0 == "id" {
                     return Some(&attr.1);
@@ -91,7 +109,7 @@ impl Node {
     }
 
     pub fn get_classes(&self) -> HashSet<&str> {
-        if let Node::Element { ref attrs, .. } = self {
+        if let NodeData::Element { ref attrs, .. } = self.data {
             for attr in attrs {
                 if attr.0 == "class" {
                     return attr.1.split(' ').collect();
@@ -103,63 +121,60 @@ impl Node {
     }
 
     pub fn get_text_content(&self) -> String {
-        match self {
-            Node::Element { ref children, .. } => {
+        match self.data {
+            NodeData::Element { .. } => {
                 let mut content = "".to_owned();
-                for c in children {
-                    content.push_str(&c.get_text_content());
+                for c in self.children {
+                    content.push_str(&c.0.borrow().get_text_content());
                 }
                 content
             }
-            Node::Text(t) => t.to_owned(),
+            NodeData::Text(t) => t.to_owned(),
         }
     }
 
     pub fn get_elements_by_tag_name(&self, tag_name: &str) -> Vec<&Self> {
-        match self {
-            Node::Element {
-                ref tag,
-                ref children,
-                ..
-            } => {
+        match self.data {
+            NodeData::Element { ref tag, .. } => {
                 let mut result = vec![];
 
                 if tag == tag_name {
                     result.push(self);
                 }
 
-                for child in children {
-                    result.append(&mut child.get_elements_by_tag_name(tag_name));
+                for child in self.children {
+                    result.append(&mut child.0.borrow().get_elements_by_tag_name(tag_name));
                 }
 
                 result
             }
-            Node::Text(_) => vec![],
+            NodeData::Text(_) => vec![],
         }
+    }
+}
+
+impl PartialEq for NodeRef {
+    fn eq(&self, other: &Self) -> bool {
+        self.0 == other.0
     }
 }
 
 impl PartialEq for Node {
     fn eq(&self, other: &Self) -> bool {
-        match self {
-            Node::Element {
-                tag,
-                attrs,
-                children,
-            } => match other {
-                Node::Element {
-                    tag: other_tag,
-                    attrs: other_attrs,
-                    children: other_children,
-                } => tag == other_tag && attrs == other_attrs && children == other_children,
+        if self.children != other.children {
+            return false;
+        }
+
+        match self.data {
+            NodeData::Element { tag, attrs } => match other.data {
+                NodeData::Element { tag: other_tag, attrs: other_attrs } => {
+                    tag == other_tag && attrs == other_attrs
+                },
                 _ => false,
             },
-            Node::Text(t) => {
-                if let Node::Text(other_t) = other {
-                    t == other_t
-                } else {
-                    false
-                }
+            NodeData::Text(t) => match other.data {
+                NodeData::Text(other_t) => t == other_t,
+                _ => false,
             }
         }
     }
@@ -167,30 +182,26 @@ impl PartialEq for Node {
 
 impl From<&Node> for String {
     fn from(n: &Node) -> String {
-        match n {
-            Node::Element {
-                tag,
-                attrs,
-                children,
-            } => {
+        match n.data {
+            NodeData::Element { tag, attrs } => {
                 let attrs_str = attrs.iter().fold("".to_owned(), |acc, x| {
                     format!("{} {}=\"{}\"", acc, x.0, x.1)
                 });
-                let children_str = children.iter().fold("".to_owned(), |acc, x| {
-                    format!("{}{}", acc, String::from(x))
+                let children_str = n.children.iter().fold("".to_owned(), |acc, x| {
+                    format!("{}{}", acc, String::from(&*x.0.borrow()))
                 });
                 format!("<{}{}>{}</{}>", &tag, attrs_str, children_str, &tag)
             }
-            Node::Text(t) => String::from(t),
+            NodeData::Text(t) => String::from(t),
         }
     }
 }
 
-pub fn elem(tag: &str) -> Node {
+pub fn elem(tag: &str) -> NodeRef {
     Node::elem(tag)
 }
 
-pub fn text(t: &str) -> Node {
+pub fn text(t: &str) -> NodeRef {
     Node::text(t)
 }
 

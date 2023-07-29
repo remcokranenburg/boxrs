@@ -1,152 +1,70 @@
 use crate::dom;
 
-pub struct Parser {
-    cursor: usize,
-    data: String,
-}
+peg::parser! {
+    pub grammar html_parser() for str {
+        pub rule nodes() -> Vec<dom::NodeRef>
+            = n:node()* { n }
 
-impl Parser {
-    fn next_char(&self) -> char {
-        self.data[self.cursor..].chars().next().unwrap()
-    }
+        pub rule node() -> dom::NodeRef
+            = __ n:(element() / text()) __ { n }
 
-    fn starts_with(&self, s: &str) -> bool {
-        self.data[self.cursor..].starts_with(s)
-    }
-
-    fn eof(&self) -> bool {
-        self.cursor >= self.data.len()
-    }
-
-    fn consume_char(&mut self) -> char {
-        let mut iter = self.data[self.cursor..].char_indices();
-        let (_, current_char) = iter.next().unwrap();
-        let (next_cursor, _) = iter.next().unwrap_or((1, ' '));
-        self.cursor += next_cursor;
-
-        current_char
-    }
-
-    fn consume_while<F>(&mut self, test: F) -> String
-    where
-        F: Fn(char) -> bool,
-    {
-        let mut result = String::new();
-        while !self.eof() && test(self.next_char()) {
-            result.push(self.consume_char());
-        }
-        result
-    }
-
-    fn consume_whitespace(&mut self) {
-        self.consume_while(char::is_whitespace);
-    }
-
-    fn parse_tag_name(&mut self) -> String {
-        self.consume_while(|c| matches!(c, 'a'..='z' | 'A'..='Z' | '0'..='9'))
-    }
-
-    fn parse_node(&mut self) -> dom::Node {
-        match self.next_char() {
-            '<' => self.parse_element(),
-            _ => self.parse_text(),
-        }
-    }
-
-    fn parse_text(&mut self) -> dom::Node {
-        dom::text(&self.consume_while(|c| c != '<'))
-    }
-
-    fn parse_element(&mut self) -> dom::Node {
-        assert!(self.consume_char() == '<');
-        let tag_name = self.parse_tag_name();
-        let attrs = self.parse_attributes();
-        assert!(self.consume_char() == '>');
-
-        let children = self.parse_nodes();
-
-        assert!(self.consume_char() == '<');
-        assert!(self.consume_char() == '/');
-        assert!(self.parse_tag_name() == tag_name);
-        assert!(self.consume_char() == '>');
-
-        dom::elem(&tag_name).add_attrs(attrs).add_children(children)
-    }
-
-    fn parse_attr(&mut self) -> (String, String) {
-        let name = self.parse_tag_name();
-        assert!(self.consume_char() == '=');
-        let value = self.parse_attr_value();
-        (name, value)
-    }
-
-    fn parse_attr_value(&mut self) -> String {
-        let open_quote = self.consume_char();
-        assert!(open_quote == '"' || open_quote == '\'');
-        let value = self.consume_while(|c| c != open_quote);
-        assert!(self.consume_char() == open_quote);
-        value
-    }
-
-    fn parse_attributes(&mut self) -> Vec<(String, String)> {
-        let mut attributes = vec![];
-        loop {
-            self.consume_whitespace();
-            if self.next_char() == '>' {
-                break;
-            }
-            let (name, value) = self.parse_attr();
-            attributes.push((name, value));
-        }
-        attributes
-    }
-
-    fn parse_nodes(&mut self) -> Vec<dom::Node> {
-        let mut nodes = Vec::new();
-        loop {
-            self.consume_whitespace();
-
-            if self.starts_with("<!") {
-                self.consume_while(|c| c != '>');
-                continue
+        rule element() -> dom::NodeRef
+            = ot:open_tag() c:node()* ct:close_tag() {?
+                if ot.0 == ct {
+                    Ok(dom::NodeRef::new(dom::Node {
+                        data: dom::NodeData::Element {
+                            tag: ot.0,
+                            attrs: ot.1,
+                        },
+                        children: c
+                    }))
+                } else {
+                    Err("close tag to match opening tag")
+                }
             }
 
-            if self.eof() || self.starts_with("</") {
-                break;
+        rule open_tag() -> (String, Vec<(String, String)>)
+            = "<" __ t:tag() a:attribute()* __ ">" { (t, a) }
+
+        rule close_tag() -> String
+            = "</" __ t:tag() __ ">" { t }
+
+        rule tag() -> String
+            = s:$(['a'..='z' | 'A'..='Z']['a'..='z' | 'A'..='Z' | '0'..='9' | '-']*) {
+                s.to_owned()
             }
-            nodes.push(self.parse_node());
-        }
-        nodes
-    }
 
-    pub fn parse_no_root(source: String) -> Vec<dom::Node> {
-        Parser {
-            cursor: 0,
-            data: source,
-        }
-        .parse_nodes()
-    }
+        rule attribute() -> (String, String)
+            = __ k:key() __ "=" __ v:value() __ { (k, v) }
 
-    pub fn parse(source: String) -> dom::Node {
-        let mut nodes = Parser::parse_no_root(source);
+        rule key() -> String
+            = s:$(['a'..='z' | 'A'..='Z']['a'..='z' | 'A'..='Z' | '0'..='9' | '-']*) {
+                s.to_owned()
+            }
 
-        if nodes.len() == 1 {
-            nodes.pop().unwrap()
-        } else {
-            dom::elem("html").add_children(nodes)
-        }
+        rule value() -> String
+            = "\"" s:$([^'"']*) "\"" { s.to_owned() }
+
+        rule text() -> dom::NodeRef
+            = t:$([^'<']+) { dom::text(t) }
+
+        rule __
+            = whitespace()*
+
+        rule whitespace()
+            = " " / "\r" / "\n" / "\t"
     }
 }
 
-impl From<String> for dom::Node {
-    fn from(s: String) -> dom::Node {
-        Parser::parse(s)
+impl From<String> for dom::NodeRef {
+    fn from(s: String) -> Self {
+        html_parser::node(&s).unwrap()
     }
 }
 
-impl From<&str> for dom::Node {
-    fn from(s: &str) -> dom::Node {
-        Parser::parse(s.to_owned())
+impl From<&str> for dom::NodeRef {
+    fn from(s: &str) -> Self {
+        html_parser::node(s).unwrap()
     }
 }
 

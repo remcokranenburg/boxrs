@@ -1,23 +1,37 @@
+use std::cell::RefCell;
 use std::collections::HashMap;
+use std::ops::Deref;
+use std::rc::Rc;
 
 use crate::css::{Rule, Selector, Sheet, Specificity, Value};
-use crate::dom::Node;
+use crate::dom::{NodeData, NodeRef};
 
 pub type PropertyMap = HashMap<String, Value>;
 
 #[derive(Debug)]
-pub struct StyledNode<'a> {
-    pub node: &'a Node,
-    pub specified_values: PropertyMap,
-    pub children: Vec<StyledNode<'a>>,
+pub struct StyledNodeRef(Rc<RefCell<StyledNode>>);
+
+impl Deref for StyledNodeRef {
+    type Target = Rc<RefCell<StyledNode>>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
 }
 
-impl<'a> From<&'a StyledNode<'a>> for String {
-    fn from(styled_node: &StyledNode) -> String {
+#[derive(Debug)]
+pub struct StyledNode {
+    pub node: NodeRef,
+    pub specified_values: PropertyMap,
+    pub children: Vec<StyledNodeRef>,
+}
+
+impl From<StyledNodeRef> for String {
+    fn from(styled_node: StyledNodeRef) -> String {
         let mut output = String::new();
 
-        match styled_node.node {
-            Node::Element { tag, attrs, .. } => {
+        match styled_node.node.data {
+            NodeData::Element { tag, attrs, .. } => {
                 output.push('<');
                 output.push_str(tag);
 
@@ -47,7 +61,7 @@ impl<'a> From<&'a StyledNode<'a>> for String {
                 output.push_str(tag);
                 output.push('>');
             }
-            Node::Text(t) => {
+            NodeData::Text(t) => {
                 output.push_str(t);
             }
         }
@@ -59,11 +73,12 @@ impl<'a> From<&'a StyledNode<'a>> for String {
 #[derive(PartialEq)]
 pub enum Display {
     Inline,
+    InlineBlock,
     Block,
     None,
 }
 
-impl<'a> StyledNode<'a> {
+impl StyledNode {
     pub fn value(&self, name: &str) -> Option<Value> {
         self.specified_values.get(name).cloned()
     }
@@ -77,6 +92,7 @@ impl<'a> StyledNode<'a> {
         match self.value("display") {
             Some(Value::Keyword(s)) => match &*s {
                 "block" => Display::Block,
+                "inline-block" => Display::InlineBlock,
                 "none" => Display::None,
                 _ => Display::Inline,
             },
@@ -85,25 +101,25 @@ impl<'a> StyledNode<'a> {
     }
 }
 
-pub fn style_tree<'a>(root: &'a Node, sheet: &'a Sheet) -> StyledNode<'a> {
-    match root {
-        Node::Element { children, .. } => StyledNode {
+pub fn style_tree<'a>(root: NodeRef, sheet: &'a Sheet) -> StyledNodeRef {
+    match root.data {
+        NodeData::Element { .. } => StyledNodeRef(Rc::new(RefCell::new(StyledNode {
             node: root,
             specified_values: get_specified_values(root, sheet),
-            children: children
+            children: root.children
                 .iter()
                 .map(|child| style_tree(child, sheet))
                 .collect(),
-        },
-        Node::Text(_) => StyledNode {
+        }))),
+        NodeData::Text(_) => StyledNodeRef(Rc::new(RefCell::new(StyledNode {
             node: root,
             specified_values: HashMap::new(),
             children: vec![],
-        },
+        }))),
     }
 }
 
-fn get_specified_values(node: &Node, sheet: &Sheet) -> PropertyMap {
+fn get_specified_values(node: NodeRef, sheet: &Sheet) -> PropertyMap {
     let mut values = HashMap::new();
     let mut rules = matching_rules(node, sheet);
 
@@ -118,46 +134,29 @@ fn get_specified_values(node: &Node, sheet: &Sheet) -> PropertyMap {
 
 type MatchedRule<'a> = (Specificity, &'a Rule);
 
-fn matching_rules<'a>(node: &Node, sheet: &'a Sheet) -> Vec<MatchedRule<'a>> {
-    sheet
-        .0
-        .iter()
-        .filter_map(|rule| match_rule(node, rule))
-        .collect()
+fn matching_rules<'a>(node: NodeRef, sheet: &'a Sheet) -> Vec<MatchedRule<'a>> {
+    sheet.0.iter().filter_map(|rule| match_rule(node, rule)).collect()
 }
 
-fn match_rule<'a>(node: &Node, rule: &'a Rule) -> Option<MatchedRule<'a>> {
-    rule.selectors
-        .iter()
+fn match_rule<'a>(node: NodeRef, rule: &'a Rule) -> Option<MatchedRule<'a>> {
+    rule.selectors.iter()
         .find(|selector| matches(node, selector))
         .map(|selector| (selector.get_specificity(), rule))
 }
 
-fn matches(node: &Node, selector: &Selector) -> bool {
-    match node {
-        Node::Element {
-            tag,
-            attrs: _,
-            children: _,
-        } => {
+fn matches(node: NodeRef, selector: &Selector) -> bool {
+    match node.data {
+        NodeData::Element { tag, attrs: _ } => {
             if selector.tag.iter().any(|name| *tag != *name) {
                 return false;
             }
 
-            if selector
-                .id
-                .iter()
-                .any(|id| node.get_id().unwrap_or("") != id)
-            {
+            if selector.id.iter().any(|id| node.get_id().unwrap_or("") != id) {
                 return false;
             }
 
             let node_classes = node.get_classes();
-            if selector
-                .class
-                .iter()
-                .any(|class| !node_classes.contains(&**class))
-            {
+            if selector.class.iter().any(|class| !node_classes.contains(&**class)) {
                 return false;
             }
 
@@ -166,7 +165,7 @@ fn matches(node: &Node, selector: &Selector) -> bool {
             // Only matching selector components
             true
         }
-        Node::Text(_) => false,
+        NodeData::Text(_) => false,
     }
 }
 
